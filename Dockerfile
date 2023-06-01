@@ -35,3 +35,6 @@ ADD github-backup.sh /backups/github-backup.sh
 ADD gdrive-backup.sh /backups/gdrive-backup.sh
 
 CMD ["bash"]
+
+
+
