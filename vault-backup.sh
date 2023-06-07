@@ -13,6 +13,6 @@ export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKE
 mkdir -p /backups/${date}
 vault operator raft snapshot save /backups/vault_${date}.snap;
 
-aws s3 cp /backups/vault_$(date '+%Y-%m-%d').snap s3://glueops-tenant-nil-primary/nil/hashicorp-vault-backups/$(date '+%Y-%m-%d')/vault_$(date +"%Y%m%d_%H%M%S").snap;
+aws s3 cp /backups/vault_$(date '+%Y-%m-%d').snap s3://${S3_BUCKET_NAME}/${CAPTAIN_DOMAIN}/hashicorp-vault-backups/$(date '+%Y-%m-%d')/vault_$(date +"%Y%m%d_%H%M%S").snap;
 
 echo "Finished Vault backup."
