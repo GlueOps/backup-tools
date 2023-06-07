@@ -5,11 +5,12 @@ ENV VERSION_AWS_CLI="2.11.24"
 ENV VERSION_GH_CLI="2.30.0"
 ENV VERSION_RCLONE="1.62.2"
 ENV VERSION_VAULT="1.13.2"
+ENV VERSION_LOKI="2.8.2"
 
 # Update the system and install required packages
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install -y curl unzip groff-base less gnupg2 git && \
+    apt-get install -y curl unzip groff-base less gnupg2 git jq && \
     rm -rf /var/lib/apt/lists/*
 
 # Install specific AWS CLI version
