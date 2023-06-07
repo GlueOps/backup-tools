@@ -45,10 +45,10 @@ ADD rclone.conf /root/.config/rclone/rclone.conf
 # Set working directory in the container
 RUN mkdir /app
 
-ADD github-backup.sh /usr/bin/github-backup
-ADD gdrive-backup.sh /usr/bin/gdrive-backup
-ADD loki-logcli-backup.sh /usr/bin/loki-logcli-backup
-ADD vault-backup.sh /usr/bin/vault-backup
+ADD github-backup.sh /usr/bin/backup-github
+ADD gdrive-backup.sh /usr/bin/backup-gdrive
+ADD loki-logcli-backup.sh /usr/bin/backup-raw-loki-logs
+ADD vault-backup.sh /usr/bin/backup-vault
 
 WORKDIR /app
 
