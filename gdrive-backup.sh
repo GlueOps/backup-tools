@@ -23,5 +23,5 @@ tar -cf "${BACKUP_LOCATION}.tar" ${BACKUP_LOCATION} && rm -rf "${BACKUP_LOCATION
 
 
 echo "Uploading everything to S3...."
-cd /backups
+cd /app
 aws s3 cp --recursive google_drive_team_drives/ s3://${S3_BUCKET_NAME}/google_drive_team_drives/

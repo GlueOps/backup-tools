@@ -43,13 +43,14 @@ RUN curl -LO https://github.com/rclone/rclone/releases/download/v${VERSION_RCLON
 ADD rclone.conf /root/.config/rclone/rclone.conf
 
 # Set working directory in the container
-RUN mkdir /backups
-WORKDIR /backups
+RUN mkdir /app
 
-ADD github-backup.sh /backups/github-backup.sh
-ADD gdrive-backup.sh /backups/gdrive-backup.sh
-ADD loki-logcli-backup.sh /backups/loki-logcli-backup.sh
-ADD vault-backup.sh /backups/vault-backup.sh
+ADD github-backup.sh /usr/bin/github-backup
+ADD gdrive-backup.sh /usr/bin/gdrive-backup
+ADD loki-logcli-backup.sh /usr/bin/loki-logcli-backup
+ADD vault-backup.sh /usr/bin/vault-backup
+
+WORKDIR /app
 
 CMD ["bash"]
 

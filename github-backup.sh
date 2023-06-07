@@ -26,5 +26,5 @@ for repo in $repos; do
 done
 
 echo "Uploading everything to S3...."
-cd /backups
+cd /app
 aws s3 cp --recursive github.com/ s3://${S3_BUCKET_NAME}/github.com/
