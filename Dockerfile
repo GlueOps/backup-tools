@@ -25,6 +25,12 @@ RUN curl -fsSL https://releases.hashicorp.com/vault/${VERSION_VAULT}/vault_${VER
     mv vault /usr/bin/ && \
     chmod +x /usr/bin/vault && \
     rm vault.zip
+    
+# Install loki's logcli
+RUN curl -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
+    && unzip logcli-linux-amd64.zip \
+    && mv logcli-linux-amd64 /usr/bin/logcli \
+    && rm logcli-linux-amd64.zip
 
 # Install GitHub CLI
 RUN curl -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
