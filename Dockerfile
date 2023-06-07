@@ -4,6 +4,7 @@ FROM ubuntu:22.04
 ENV VERSION_AWS_CLI="2.11.24"
 ENV VERSION_GH_CLI="2.30.0"
 ENV VERSION_RCLONE="1.62.2"
+ENV VERSION_VAULT="1.13.2"
 
 # Update the system and install required packages
 RUN apt-get update -y && \
@@ -16,6 +17,13 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${VERSION_AWS_CLI
     unzip awscliv2.zip && \
     ./aws/install &&    \
     rm -rf awscliv2.zip aws
+
+# Install Vault CLI
+RUN curl -fsSL https://releases.hashicorp.com/vault/${VERSION_VAULT}/vault_${VERSION_VAULT}_linux_amd64.zip -o vault.zip && \
+    unzip vault.zip && \
+    mv vault /usr/bin/ && \
+    chmod +x /usr/bin/vault && \
+    rm vault.zip
 
 # Install GitHub CLI
 RUN curl -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
