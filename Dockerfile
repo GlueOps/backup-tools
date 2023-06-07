@@ -48,6 +48,7 @@ WORKDIR /backups
 
 ADD github-backup.sh /backups/github-backup.sh
 ADD gdrive-backup.sh /backups/gdrive-backup.sh
+ADD loki-exporter.sh /backups/loki-exporter.sh
 
 CMD ["bash"]
 
