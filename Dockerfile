@@ -25,7 +25,7 @@ RUN curl -fsSL https://releases.hashicorp.com/vault/${VERSION_VAULT}/vault_${VER
     mv vault /usr/bin/ && \
     chmod +x /usr/bin/vault && \
     rm vault.zip
-    
+
 # Install loki's logcli
 RUN curl -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
     && unzip logcli-linux-amd64.zip \
@@ -49,6 +49,7 @@ WORKDIR /backups
 ADD github-backup.sh /backups/github-backup.sh
 ADD gdrive-backup.sh /backups/gdrive-backup.sh
 ADD loki-logcli-backup.sh /backups/loki-logcli-backup.sh
+ADD vault-backup.sh /backups/vault-backup.sh
 
 CMD ["bash"]
 
