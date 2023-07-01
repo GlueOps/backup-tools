@@ -1,7 +1,7 @@
 # Use an official Ubuntu runtime as a parent image
 FROM ubuntu:22.04
 
-ENV VERSION_AWS_CLI="2.11.26"
+ENV VERSION_AWS_CLI="2.12.6"
 ENV VERSION_GH_CLI="2.30.0"
 ENV VERSION_RCLONE="1.62.2"
 ENV VERSION_VAULT="1.13.3"
