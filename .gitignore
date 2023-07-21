@@ -1,0 +1,3 @@
+*.db
+*.snap
+*peers.json
