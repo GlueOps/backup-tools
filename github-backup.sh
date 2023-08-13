@@ -20,7 +20,11 @@ BACKUP_LOCATION="github.com/$BACKUP_DATE/$GITHUB_ORG_TO_BACKUP"
 mkdir -p $BACKUP_LOCATION && cd $BACKUP_LOCATION
 
 for repo in $repos; do
+    # this is an empty dir and required for FORKed repos
+    mkdir $repo
     gh repo clone https://github.com/$repo.git -- --mirror 
+    # this should be an empty folder and should error if it's not empty
+    rmdir  $repo
     repo_name="${repo##*/}"
     tar -czf "${repo_name}.tar.gz" "${repo_name}.git" && rm -rf "${repo_name}.git"
 done
