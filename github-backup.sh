@@ -20,7 +20,7 @@ BACKUP_LOCATION="github.com/$BACKUP_DATE/$GITHUB_ORG_TO_BACKUP"
 mkdir -p $BACKUP_LOCATION && cd $BACKUP_LOCATION
 
 for repo in $repos; do
-    gh clone https://${GITHUB_TOKEN}@github.com/$repo.git --mirror 
+    gh clone https://$GITHUB_TOKEN@github.com/$repo.git --mirror 
     repo_name="${repo##*/}"
     tar -czf "${repo_name}.tar.gz" "${repo_name}.git" && rm -rf "${repo_name}.git"
 done
