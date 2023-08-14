@@ -28,7 +28,7 @@ export GITHUB_TOKEN="" # GitH needs to have read access to all repositories with
 ```bash
 docker build . -t backup && docker run -it backup
 # Export ALL the variables required as mentioned in this README.md and then run:
-./github-backup.sh
+backup-github
 ```
 
 # Google Drive Shared Drive Backups
