@@ -1,7 +1,6 @@
 # Use an official Ubuntu runtime as a parent image
 FROM ubuntu:22.04
 
-ENV DASEL_VERSION="2.3.4"
 ENV VERSION_AWS_CLI="2.13.5"
 ENV VERSION_GH_CLI="2.32.1"
 ENV VERSION_RCLONE="1.63.1"
@@ -13,12 +12,6 @@ RUN apt-get update -y && \
     apt-get upgrade -y && \
     apt-get install -y curl unzip groff-base less gnupg2 git jq && \
     rm -rf /var/lib/apt/lists/*
-
-# Install DASEL
-RUN curl "https://github.com/TomWright/dasel/releases/download/v${DASEL_VERSION}/dasel_linux_amd64" -o "dasel" && \
-    chmod +x dasel && \
-    mv dasel /usr/local/bin/
-
 
 # Install specific AWS CLI version
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${VERSION_AWS_CLI}.zip" -o "awscliv2.zip" && \
