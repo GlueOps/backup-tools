@@ -12,6 +12,8 @@ export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKE
 mkdir -p /app/${date}
 vault operator raft snapshot save /app/vault_${date}.snap;
 datetime=$(date +"%Y%m%d_%H%M%S")
+echo "Sleeping for 10 seconds in case any debugging needs to be done"
+sleep 10;
 s3_destination=${S3_BUCKET_NAME}/${CAPTAIN_DOMAIN}/hashicorp-vault-backups/${date}/vault_${datetime}.snap
 aws s3 cp /app/vault_${date}.snap s3://${s3_destination}
 unset VAULT_TOKEN
