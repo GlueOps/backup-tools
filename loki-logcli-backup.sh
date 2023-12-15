@@ -52,35 +52,36 @@ for i in {2..72}; do
   echo "s3_path: $s3_path"
 
   # Check if the file already exists in S3 and has been replicated.
+  FILE_EXISTS=0
   existing_files=$(aws s3api list-objects --bucket "$S3_BUCKET_NAME" --prefix "$S3_FOLDER_PATH" --query 'Contents[].Key' --output text)
   for file in $existing_files; do
       if [[ $file == *"$time_window_of_logs"* ]]; then
       echo "The ${file} already exists in S3. Skipping the upload."
-      continue
+      FILE_EXISTS=1
       fi
   done
 
 
+  if [ $FILE_EXISTS -eq 0 ]; then
+      # Query Loki and create part file. The part file will be created in the current directory.
+      logcli query '{job=~".+"}' --output jsonl --timezone=UTC --tls-skip-verify --from "$start_time" --to "$end_time" --parallel-max-workers=2 --parallel-duration=120m --part-path-prefix=$(pwd)/$prefix_file_name
 
-  # Query Loki and create part file. The part file will be created in the current directory.
-  logcli query '{job=~".+"}' --output jsonl --timezone=UTC --tls-skip-verify --from "$start_time" --to "$end_time" --parallel-max-workers=2 --parallel-duration=120m --part-path-prefix=$(pwd)/$prefix_file_name
+      # Check for multiple part files. This should never since each parallel-duration is 2 hours which exceeds the requested time range of 1 hour.
+      part_files_count=$(ls -1 *.part 2>/dev/null | wc -l)
 
-  # Check for multiple part files. This should never since each parallel-duration is 2 hours which exceeds the requested time range of 1 hour.
-  part_files_count=$(ls -1 *.part 2>/dev/null | wc -l)
+      if [ $part_files_count -gt 1 ]; then
+        echo "Error: Found multiple part files. There should only be 1 part file. Skipping to the next hour."
+        ERRORS += 1
+        cleanup
+        continue
+      fi
 
-  if [ "$part_files_count" -gt 1 ]; then
-    echo "Error: Found multiple part files. There should only be 1 part file. Skipping to the next hour."
-    ERRORS += 1
-    cleanup
-    continue
-  fi
+      part_file=$(ls *.part | head -n 1)
 
-  part_file=$(ls *.part | head -n 1)
-
-  # Gzip and upload the part file to S3
-  gzip "$part_file"
-  aws s3 cp "${part_file}.gz" "s3://${S3_BUCKET_NAME}/${s3_path}"
-
+      # Gzip and upload the part file to S3
+      gzip "$part_file"
+      aws s3 cp "${part_file}.gz" "s3://${S3_BUCKET_NAME}/${s3_path}"
+  done
   cleanup
 
 done
