@@ -63,6 +63,8 @@ for i in {2..72}; do
 
 
   if [ $FILE_EXISTS -eq 0 ]; then
+      echo "The ${file} does not exist in S3. Starting to fetch logs from loki now..."
+
       # Query Loki and create part file. The part file will be created in the current directory.
       logcli query '{job=~".+"}' --output jsonl --timezone=UTC --tls-skip-verify --from "$start_time" --to "$end_time" --parallel-max-workers=2 --parallel-duration=120m --part-path-prefix=$(pwd)/$prefix_file_name
 
