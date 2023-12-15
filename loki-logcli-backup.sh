@@ -56,7 +56,7 @@ for i in {2..72}; do
   existing_files=$(aws s3api list-objects --bucket "$S3_BUCKET_NAME" --prefix "$S3_FOLDER_PATH" --query 'Contents[].Key' --output text)
   for file in $existing_files; do
       if [[ $file == *"$time_window_of_logs"* ]]; then
-      echo "The ${file} already exists in S3. Skipping the upload."
+      echo "Skipping the time window: ${time_window_of_logs} as it is already covered by the ${file} within S3."
       FILE_EXISTS=1
       fi
   done
