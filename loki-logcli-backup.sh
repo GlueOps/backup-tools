@@ -83,7 +83,9 @@ for i in {2..72}; do
       # Gzip and upload the part file to S3
       gzip "$part_file"
       aws s3 cp "${part_file}.gz" "s3://${S3_BUCKET_NAME}/${s3_path}"
-  done
+      echo "The ${file} has been uploaded to S3."
+
+  fi
   cleanup
 
 done
