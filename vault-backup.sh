@@ -24,8 +24,16 @@ export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKE
 
 echo "Reading first secret available in current vault environment with actual data. If it was updated since the backup was taken then this backup may fail!"
 
+# Global variable to store the first secret with data
+FIRST_SECRET=""
+
 # Function to find the first secret with data
 function find_first_secret_with_data() {
+    # Exit if we have already found a secret
+    if [[ -n "$FIRST_SECRET" ]]; then
+        return
+    fi
+
     local path=$1
     local secrets=$(vault list -format=json "${path}" | jq -r '.[]' | grep -v '^\s*$')
 
@@ -37,16 +45,15 @@ function find_first_secret_with_data() {
             # It's a secret, check if it has key-value pairs
             local secret_data=$(vault read -format=json "${path}${secret}" | jq '.data')
             if [[ $secret_data != "{}" && $secret_data != "null" ]]; then
-                echo "${path}${secret}"
+                FIRST_SECRET="${path}${secret}"
                 return
             fi
         fi
     done
 }
 
-
 # Find the first secret with actual data
-FIRST_SECRET=$(find_first_secret_with_data "secret/metadata/")
+find_first_secret_with_data "secret/metadata/"
 echo "Found first secret with data: $FIRST_SECRET"
 
 # Reading the data/values within the first secret
