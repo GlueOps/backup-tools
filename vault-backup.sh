@@ -30,7 +30,7 @@ FIRST_SECRET=""
 # Function to find the first secret with data
 function find_first_secret_with_data() {
     # Exit if we have already found a secret
-    if [[ -n "$FIRST_SECRET_FOUND" ]]; then
+    if [[ -n "$FIRST_SECRET" ]]; then
         return
     fi
 
