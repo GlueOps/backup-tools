@@ -75,6 +75,7 @@ BASE_JSON='{
     "path_values_map":{},
     "vault_version": "1.14.8"
 }'
+
 FIRST_SECRET_NO_PREFIX=${FIRST_SECRET#"secret/data/}
 
 UPDATED_JSON=$(echo $BASE_JSON | jq --arg path "secret/$FIRST_SECRET_NO_PREFIX" --argjson kv "$KEY_VALUES" '.path_values_map[$path] = $kv')
