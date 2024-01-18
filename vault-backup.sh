@@ -60,7 +60,7 @@ echo "Found first secret with data: $FIRST_SECRET"
 
 # Reading the data/values within the first secret
 echo "Reading the data/values within the first secret"
-VAULT_OUTPUT=$(vault read -format=json "secret/data/$FIRST_SECRET")
+VAULT_OUTPUT=$(vault read -format=json "$FIRST_SECRET")
 KEY_VALUES=$(echo $VAULT_OUTPUT | jq '.data.data')
 
 # Rest of your script logic
