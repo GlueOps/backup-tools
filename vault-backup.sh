@@ -27,7 +27,7 @@ echo "Reading first secret available in current vault environment with actual da
 # Function to find the first secret with data
 function find_first_secret_with_data() {
     local path=$1
-    local secrets=$(vault list -format=json "${path}" | jq -r '.[]')
+    local secrets=$(vault list -format=json "${path}" | jq -r '.[]' | grep -v '^\s*$')
 
     for secret in $secrets; do
         if [[ $secret == */ ]]; then
@@ -43,6 +43,7 @@ function find_first_secret_with_data() {
         fi
     done
 }
+
 
 # Find the first secret with actual data
 FIRST_SECRET=$(find_first_secret_with_data "secret/metadata/")
