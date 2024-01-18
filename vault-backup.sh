@@ -30,7 +30,7 @@ FIRST_SECRET=""
 # Function to find the first secret with data
 function find_first_secret_with_data() {
     # Exit if we have already found a secret
-    if [[ -n "$FIRST_SECRET" ]]; then
+    if [[ -n "$FIRST_SECRET_FOUND" ]]; then
         return
     fi
 
@@ -42,10 +42,12 @@ function find_first_secret_with_data() {
             # It's a directory, go deeper
             find_first_secret_with_data "${path}${secret}"
         else
-            # It's a secret, check if it has key-value pairs
-            local secret_data=$(vault read -format=json "${path}${secret}" | jq '.data')
+            # Adjust the path for reading the secret
+            local adjusted_path="${path}${secret}"
+            adjusted_path=${adjusted_path/\/metadata\//\/data\/}
+            local secret_data=$(vault read -format=json "$adjusted_path" | jq '.data')
             if [[ $secret_data != "{}" && $secret_data != "null" ]]; then
-                FIRST_SECRET="${path}${secret}"
+                FIRST_SECRET="$adjusted_path"
                 return
             fi
         fi
