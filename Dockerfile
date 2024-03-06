@@ -49,6 +49,8 @@ ADD github-backup.sh /usr/bin/backup-github
 ADD gdrive-backup.sh /usr/bin/backup-gdrive
 ADD loki-logcli-backup.sh /usr/bin/backup-loki-logs-as-json
 ADD vault-backup.sh /usr/bin/backup-vault
+ADD s3-backup.sh /usr/bin/s3-backup
+
 
 WORKDIR /app
 
