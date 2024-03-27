@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/zsh
 
-set -e
+setopt ERR_EXIT
 
 # Check if required variables are set
 if [[ -z "${GITHUB_ORG_TO_BACKUP}" ]]; then

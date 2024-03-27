@@ -19,8 +19,8 @@ If you make an error in the process then it's recommended to delete everything, 
 
 Start the container with:
 
-```bash
-docker run -it -p 8200:8200 -v `pwd`/data:/data backup bash
+```zsh
+docker run -it -p 8200:8200 -v `pwd`/data:/data backup zsh
 ```
 
 Run the following script to:
@@ -31,7 +31,7 @@ Run the following script to:
 - Unseal vault
 - Login to vault with the root token
   
-```bash
+```zsh
 mkdir -p /data/raft
 cat > /data/raft/peers.json << EOF
 [
@@ -60,7 +60,7 @@ vault login $root_token
 
 Create an S3 PRESIGNED URL to the backup that we want to restore. Limit the time to 10mins or whatever you feel is appropriate. And then export the url as a variable in the same terminal session from above.
 
-```bash
+```zsh
 S3_PRESIGNED_DOWNLOAD_URL="https://time-sensitive-and-authenticated-url-to-download-backup-from-s3"
 curl -o backup_to_restore.snap $S3_PRESIGNED_DOWNLOAD_URL
 vault operator raft snapshot restore -force backup_to_restore.snap
@@ -68,13 +68,13 @@ vault operator raft snapshot restore -force backup_to_restore.snap
 
 # In the same terminal session unseal with the unseal token for the backup you just restored
 
-```bash
+```zsh
 vault operator unseal 55ebb6859b269cd1ce501989ebba821baf84076c28d84008474aa3fddc0a24b3
 ```
 
 # In the same terminal session, login with the root token for the backup you unsealed/restored.
 
-```bash
+```zsh
 vault login hvs.fm0DOOSsPTwqB7rFFNbJgCle
 ```
 

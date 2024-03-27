@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/zsh
 
-set -e
+setopt ERR_EXIT
 
 
 date=$(date '+%Y-%m-%d')

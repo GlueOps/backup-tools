@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/bin/zsh
+setopt ERR_EXIT
 
 cleanup() {
   echo "Cleaning up..."

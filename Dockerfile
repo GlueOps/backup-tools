@@ -54,4 +54,4 @@ ADD s3-backup.sh /usr/bin/s3-backup
 
 WORKDIR /app
 
-CMD ["bash"]
+CMD ["zsh"]

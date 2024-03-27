@@ -3,7 +3,7 @@
 
 - AWS S3 Credentials. Regardless of whether you backup google team drives or github repos, you will need these environment variables to be set:
 
-```bash
+```zsh
 export AWS_DEFAULT_REGION=us-west-2 # must be the same region as the bucket
 export S3_BUCKET_NAME="bucket-name"
 export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXX 
@@ -14,7 +14,7 @@ export AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXX
 
 Following variables must be set
 
-```bash
+```zsh
 export GITHUB_ORG_TO_BACKUP="GlueOps" # Set this to the organization you want to backup. The GITHUB_TOKEN must have read access to all the repos in this organization.
 export GITHUB_TOKEN="" # GitH needs to have read access to all repositories within the organization. We use the fine grained access tokens (beta feature)
 ```
@@ -25,7 +25,7 @@ export GITHUB_TOKEN="" # GitH needs to have read access to all repositories with
 
 - Example backup
 
-```bash
+```zsh
 docker build . -t backup && docker run -it backup
 # Export ALL the variables required as mentioned in this README.md and then run:
 backup-github
@@ -40,14 +40,14 @@ backup-github
 
 Following variables must be set
 
-```bash
+```zsh
 export RCLONE_DRIVE_SERVICE_ACCOUNT_CREDENTIALS='<<json-without \n (newlines)>>' # Get this from the IAM user in the rclone google cloud service account project and remove all newlines \n
 export RCLONE_DRIVE_TEAM_DRIVE="XXXXXXXXXXXXXX" # team drive id ex. `0ZZH9DD53YuyEaYU7sqb`
 ```
 
 - Example to run a download of the team drive to local
   
-```bash
+```zsh
 docker build . -t backup && docker run -it backup
 # Export ALL the variables required as mentioned in this README.md and then run:
 ./gdrive-backup.sh
