@@ -1,5 +1,6 @@
 #!/bin/zsh
 setopt ERR_EXIT
+setopt PIPE_FAIL
 
 cleanup() {
   echo "Cleaning up..."

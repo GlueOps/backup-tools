@@ -1,5 +1,6 @@
 #!/bin/zsh
 setopt ERR_EXIT
+setopt PIPE_FAIL
 
 # Ensure all required environment variables are set
 if [ -z "$SRC_AWS_ACCESS_KEY_ID" ] || [ -z "$SRC_AWS_SECRET_ACCESS_KEY" ] || [ -z "$DST_AWS_ACCESS_KEY_ID" ] || [ -z "$DST_AWS_SECRET_ACCESS_KEY" ] || [ -z "$SRC_BUCKET" ] || [ -z "$DST_BUCKET" ]; then

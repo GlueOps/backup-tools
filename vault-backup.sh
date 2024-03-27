@@ -1,7 +1,7 @@
 #!/bin/zsh
 
 setopt ERR_EXIT
-
+setopt PIPE_FAIL
 
 date=$(date '+%Y-%m-%d')
 echo "Starting Vault backup...@ ${date}"
