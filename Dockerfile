@@ -10,7 +10,7 @@ ENV VERSION_LOKI="2.9.5"
 # Update the system and install required packages
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install -y curl unzip groff-base less gnupg2 git jq && \
+    apt-get install -y curl unzip groff-base less gnupg2 git jq zsh && \
     rm -rf /var/lib/apt/lists/*
 
 # Install specific AWS CLI version
