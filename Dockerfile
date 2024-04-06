@@ -5,7 +5,7 @@ ENV VERSION_AWS_CLI="2.15.30"
 ENV VERSION_GH_CLI="2.44.1"
 ENV VERSION_RCLONE="1.66.0"
 ENV VERSION_VAULT="1.14.10"
-ENV VERSION_LOKI="2.9.5"
+ENV VERSION_LOKI="2.9.6"
 
 # Update the system and install required packages
 RUN apt-get update -y && \
