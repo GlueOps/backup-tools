@@ -30,7 +30,7 @@ fi
 ERRORS=0
 
 # Loop through the last 72 hours, excluding the most recent 2 hours
-for i in {2..72}; do
+for i in {2..900}; do
   echo "Processing hour $i"
 
   # Get the date and time
