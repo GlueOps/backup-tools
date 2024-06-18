@@ -14,30 +14,30 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/*
 
 # Install specific AWS CLI version
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${VERSION_AWS_CLI}.zip" -o "awscliv2.zip" && \
+RUN curl --proto =https "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${VERSION_AWS_CLI}.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install &&    \
     rm -rf awscliv2.zip aws
 
 # Install Vault CLI
-RUN curl -fsSL https://releases.hashicorp.com/vault/${VERSION_VAULT}/vault_${VERSION_VAULT}_linux_amd64.zip -o vault.zip && \
+RUN curl --proto =https -fsSL https://releases.hashicorp.com/vault/${VERSION_VAULT}/vault_${VERSION_VAULT}_linux_amd64.zip -o vault.zip && \
     unzip vault.zip && \
     mv vault /usr/bin/ && \
     chmod +x /usr/bin/vault && \
     rm vault.zip
 
 # Install loki's logcli
-RUN curl -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
+RUN curl --proto =https -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
     && unzip logcli-linux-amd64.zip \
     && mv logcli-linux-amd64 /usr/bin/logcli \
     && rm logcli-linux-amd64.zip
 
 # Install GitHub CLI
-RUN curl -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
+RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     dpkg -i gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     rm gh_${VERSION_GH_CLI}_linux_amd64.deb
 
-RUN curl -LO https://github.com/rclone/rclone/releases/download/v${VERSION_RCLONE}/rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
+RUN curl --proto =https -LO https://github.com/rclone/rclone/releases/download/v${VERSION_RCLONE}/rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
     dpkg -i rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
     rm rclone-v${VERSION_RCLONE}-linux-amd64.deb
 ADD rclone.conf /root/.config/rclone/rclone.conf
