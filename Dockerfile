@@ -1,11 +1,9 @@
 # Use an official Ubuntu runtime as a parent image
 FROM ubuntu:22.04@sha256:19478ce7fc2ffbce89df29fea5725a8d12e57de52eb9ea570890dc5852aac1ac
 
-ENV VERSION_AWS_CLI="2.16.10"
-ENV VERSION_GH_CLI="2.51.0"
-ENV VERSION_RCLONE="1.67.0"
+ENV VERSION_AWS_CLI="2.17.6"
+ENV VERSION_GH_CLI="2.52.0"
 ENV VERSION_VAULT="1.14.10"
-ENV VERSION_LOKI="2.9.8"
 
 # Update the system and install required packages
 RUN apt-get update -y && \
@@ -26,28 +24,15 @@ RUN curl --proto =https -fsSL https://releases.hashicorp.com/vault/${VERSION_VAU
     chmod +x /usr/bin/vault && \
     rm vault.zip
 
-# Install loki's logcli
-RUN curl --proto =https -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
-    && unzip logcli-linux-amd64.zip \
-    && mv logcli-linux-amd64 /usr/bin/logcli \
-    && rm logcli-linux-amd64.zip
-
 # Install GitHub CLI
 RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     dpkg -i gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     rm gh_${VERSION_GH_CLI}_linux_amd64.deb
 
-RUN curl --proto =https -LO https://github.com/rclone/rclone/releases/download/v${VERSION_RCLONE}/rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
-    dpkg -i rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
-    rm rclone-v${VERSION_RCLONE}-linux-amd64.deb
-ADD rclone.conf /root/.config/rclone/rclone.conf
-
 # Set working directory in the container
 RUN mkdir /app
 
 ADD github-backup.sh /usr/bin/backup-github
-ADD gdrive-backup.sh /usr/bin/backup-gdrive
-ADD loki-logcli-backup.sh /usr/bin/backup-loki-logs-as-json
 ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
 
