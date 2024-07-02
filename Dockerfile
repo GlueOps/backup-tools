@@ -26,12 +26,6 @@ RUN curl --proto =https -fsSL https://releases.hashicorp.com/vault/${VERSION_VAU
     chmod +x /usr/bin/vault && \
     rm vault.zip
 
-# Install loki's logcli
-RUN curl --proto =https -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
-    && unzip logcli-linux-amd64.zip \
-    && mv logcli-linux-amd64 /usr/bin/logcli \
-    && rm logcli-linux-amd64.zip
-
 # Install GitHub CLI
 RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     dpkg -i gh_${VERSION_GH_CLI}_linux_amd64.deb && \
@@ -47,7 +41,6 @@ RUN mkdir /app
 
 ADD github-backup.sh /usr/bin/backup-github
 ADD gdrive-backup.sh /usr/bin/backup-gdrive
-ADD loki-logcli-backup.sh /usr/bin/backup-loki-logs-as-json
 ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
 
