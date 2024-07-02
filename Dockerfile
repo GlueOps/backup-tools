@@ -3,9 +3,7 @@ FROM ubuntu:22.04@sha256:19478ce7fc2ffbce89df29fea5725a8d12e57de52eb9ea570890dc5
 
 ENV VERSION_AWS_CLI="2.17.6"
 ENV VERSION_GH_CLI="2.52.0"
-ENV VERSION_RCLONE="1.67.0"
 ENV VERSION_VAULT="1.14.10"
-ENV VERSION_LOKI="2.9.8"
 
 # Update the system and install required packages
 RUN apt-get update -y && \
@@ -31,16 +29,10 @@ RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERS
     dpkg -i gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     rm gh_${VERSION_GH_CLI}_linux_amd64.deb
 
-RUN curl --proto =https -LO https://github.com/rclone/rclone/releases/download/v${VERSION_RCLONE}/rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
-    dpkg -i rclone-v${VERSION_RCLONE}-linux-amd64.deb && \
-    rm rclone-v${VERSION_RCLONE}-linux-amd64.deb
-ADD rclone.conf /root/.config/rclone/rclone.conf
-
 # Set working directory in the container
 RUN mkdir /app
 
 ADD github-backup.sh /usr/bin/backup-github
-ADD gdrive-backup.sh /usr/bin/backup-gdrive
 ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
 
