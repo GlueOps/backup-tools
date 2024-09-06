@@ -1,5 +1,5 @@
 # Use an official Ubuntu runtime as a parent image
-FROM ubuntu:22.04@sha256:340d9b015b194dc6e2a13938944e0d016e57b9679963fdeb9ce021daac430221
+FROM ubuntu:22.04@sha256:adbb90115a21969d2fe6fa7f9af4253e16d45f8d4c1e930182610c4731962658
 
 ENV VERSION_AWS_CLI="2.17.45"
 ENV VERSION_GH_CLI="2.55.0"
