@@ -35,6 +35,7 @@ RUN mkdir /app
 ADD github-backup.sh /usr/bin/backup-github
 ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
+ADD github-workflow-dispatcher.sh /usr/bin/github-workflow-dispatcher
 
 
 WORKDIR /app
