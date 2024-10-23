@@ -1,8 +1,8 @@
 # Use an official Ubuntu runtime as a parent image
 FROM ubuntu:22.04@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631587203f97
 
-ENV VERSION_AWS_CLI="2.17.45"
-ENV VERSION_GH_CLI="2.55.0"
+ENV VERSION_AWS_CLI="2.18.12"
+ENV VERSION_GH_CLI="2.59.0"
 ENV VERSION_VAULT="1.14.10"
 
 # Update the system and install required packages
