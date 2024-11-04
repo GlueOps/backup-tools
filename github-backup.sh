@@ -21,14 +21,33 @@ while true; do
     if [ -z "$orgs" ]; then
         break
     fi
+    
+    # Replace newlines with commas in the current page's orgs
+    orgs_comma=$(echo "$orgs" | paste -sd "," -)
 
-    # Append organizations to the all_orgs variable
-    all_orgs="$all_orgs,$orgs"
+    # Append current orgs to all_orgs with a comma separator
+    if [ -z "$all_orgs" ]; then
+        all_orgs="$orgs_comma"
+    else
+        all_orgs="$all_orgs,$orgs_comma"
+    fi
 
     # Increment the page number
     page=$((page + 1))
 done
 
+
+# Save the original IFS
+OLD_IFS="$IFS"
+
+# Set IFS to comma for splitting
+IFS=','
+
+# Read the all_orgs into positional parameters
+set -- $all_orgs
+
+# Restore the original IFS
+IFS="$OLD_IFS"
 
 echo "Full list to be backed up: $all_orgs"
 
