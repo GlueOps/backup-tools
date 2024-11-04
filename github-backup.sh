@@ -33,7 +33,8 @@ done
 echo "Full list to be backed up: $orgs"
 
 echo "$all_orgs" | while IFS= read -r GITHUB_ORG_TO_BACKUP; do
-
+        #remove newlines
+        GITHUB_ORG_TO_BACKUP=$(echo "$GITHUB_ORG_TO_BACKUP" | tr -d '\n')
         echo "STARTING BACKUP OF: https://github.com/${GITHUB_ORG_TO_BACKUP}"
 
         repos=$(gh repo list $GITHUB_ORG_TO_BACKUP -L 100000 --json nameWithOwner -q '.[].nameWithOwner')
