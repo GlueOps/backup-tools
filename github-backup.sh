@@ -30,7 +30,7 @@ while true; do
 done
 
 
-echo "Full list to be backed up: $orgs"
+echo "Full list to be backed up: $all_orgs"
 
 echo "$all_orgs" | while IFS= read -r GITHUB_ORG_TO_BACKUP; do
         #remove literal newlines
