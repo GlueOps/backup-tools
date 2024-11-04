@@ -52,7 +52,9 @@ IFS="$OLD_IFS"
 echo "Full list to be backed up: $all_orgs"
 
 for GITHUB_ORG_TO_BACKUP in "$@"; do
-        echo "\n\n"
+        echo ""
+        echo ""
+        
         echo "STARTING BACKUP OF: https://github.com/${GITHUB_ORG_TO_BACKUP}"
 
         repos=$(gh repo list $GITHUB_ORG_TO_BACKUP -L 100000 --json nameWithOwner -q '.[].nameWithOwner')
