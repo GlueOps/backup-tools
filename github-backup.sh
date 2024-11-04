@@ -23,7 +23,7 @@ while true; do
     fi
 
     # Append organizations to the all_orgs variable
-    all_orgs="$all_orgs\n$orgs"
+    all_orgs="$all_orgs,$orgs"
 
     # Increment the page number
     page=$((page + 1))
@@ -32,9 +32,8 @@ done
 
 echo "Full list to be backed up: $all_orgs"
 
-echo "$all_orgs" | while IFS= read -r GITHUB_ORG_TO_BACKUP; do
-        #remove literal newlines
-        GITHUB_ORG_TO_BACKUP=$(printf "%s" "$GITHUB_ORG_TO_BACKUP" | sed 's/^\\n//; s/^[[:space:]]*//; s/[[:space:]]*$//')
+for GITHUB_ORG_TO_BACKUP in "$@"; do
+        echo "\n\n"
         echo "STARTING BACKUP OF: https://github.com/${GITHUB_ORG_TO_BACKUP}"
 
         repos=$(gh repo list $GITHUB_ORG_TO_BACKUP -L 100000 --json nameWithOwner -q '.[].nameWithOwner')
