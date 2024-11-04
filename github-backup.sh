@@ -52,6 +52,7 @@ echo "$all_orgs" | while IFS= read -r GITHUB_ORG_TO_BACKUP; do
         echo "Uploading everything to S3...."
         cd /app
         aws s3 cp --recursive github.com/ s3://${S3_BUCKET_NAME}/github.com/
+        rm -rf github.com/
 
 
         echo "FINISHED BACKUP OF: https://github.com/${GITHUB_ORG_TO_BACKUP}"
