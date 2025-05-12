@@ -11,7 +11,7 @@ export VAULT_SKIP_VERIFY=true
 export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKEN role=vault-backup-role);
 mkdir -p /app/${date}
 vault operator raft snapshot save /app/vault_${date}.snap;
-datetime=$(date +"%Y%m%d_%H%M%S")
+datetime=$(date +"%Y-%m-%d %H:%M:%S")
 echo "Sleeping for 10 seconds in case any debugging needs to be done"
 sleep 10;
 s3_destination=${S3_BUCKET_NAME}/${CAPTAIN_DOMAIN}/${BACKUP_PREFIX}/${date}/vault_${datetime}.snap
