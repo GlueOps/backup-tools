@@ -11,11 +11,11 @@ export VAULT_SKIP_VERIFY=true
 export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKEN role=vault-backup-role);
 mkdir -p /app/${date}
 vault operator raft snapshot save /app/vault_${date}.snap;
-datetime=$(date +"%Y-%m-%d %H:%M:%S")
+datetime=$(date +"%Y-%m-%dT%H:%M:%S")
 echo "Sleeping for 10 seconds in case any debugging needs to be done"
 sleep 10;
 s3_destination=${S3_BUCKET_NAME}/${CAPTAIN_DOMAIN}/${BACKUP_PREFIX}/${date}/vault_${datetime}.snap
-aws s3api put-object --bucket ${S3_BUCKET_NAME} --key ${CAPTAIN_DOMAIN}/${BACKUP_PREFIX}/${date}/vault_${datetime}.snap --body /app/vault_${date}.snap  --tagging "datetime=${datetime}"
+aws s3api put-object --bucket ${S3_BUCKET_NAME} --key ${CAPTAIN_DOMAIN}/${BACKUP_PREFIX}/${date}/vault_${datetime}.snap --body /app/vault_${date}.snap  --tagging "datetime_created=${datetime}"
 unset VAULT_TOKEN
 echo "Uploaded backup to s3. BUT we still need to validate the backup!!"
 echo "Assuming vault-reader-role in vault"
