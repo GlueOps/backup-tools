@@ -15,7 +15,7 @@ RUN apt-get update -y && \
     apt-get upgrade -y && \
     apt-get install -y curl unzip groff-base less gnupg2 git jq tmux && \
     rm -rf /var/lib/apt/lists/*
-image
+
 # Install loki's logcli
 RUN curl --proto =https -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
     && unzip logcli-linux-amd64.zip \
