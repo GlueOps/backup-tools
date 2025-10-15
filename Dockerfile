@@ -1,10 +1,14 @@
 # Use an official Ubuntu runtime as a parent image
 FROM ubuntu:24.04@sha256:66460d557b25769b102175144d538d88219c077c678a49af4afca6fbfc1b5252
 
-ENV VERSION_AWS_CLI="2.18.12"
-ENV VERSION_GH_CLI="2.59.0"
-ENV VERSION_VAULT="1.14.10"
-ENV VERSION_LOKI="2.9.10"
+# renovate: datasource=github-tags depName=aws/aws-cli
+ARG VERSION_AWS_CLI=2.18.12
+# renovate: datasource=github-tags depName=cli/cli
+ARG VERSION_GH_CLI=2.59.0
+# renovate: datasource=github-tags depName=openbao/openbao
+ARG VERSION_VAULT=2.4.0
+# renovate: datasource=github-tags depName=grafana/loki
+ARG VERSION_LOKI=2.9.10
 
 # Update the system and install required packages
 RUN apt-get update -y && \

@@ -4,13 +4,13 @@ set -e
 
 
 date=$(date '+%Y-%m-%d')
-echo "Starting Vault backup...@ ${date}"
+echo "Starting bao backup...@ ${date}"
 SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token);
-export VAULT_LOG_LEVEL=debug
+export BAO_LOG_LEVEL=debug
 export VAULT_SKIP_VERIFY=true
-export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKEN role=vault-backup-role);
+export VAULT_TOKEN=$(bao write -field=token auth/kubernetes/login jwt=$SA_TOKEN role=vault-backup-role);
 mkdir -p /app/${date}
-vault operator raft snapshot save /app/vault_${date}.snap;
+bao operator raft snapshot save /app/vault_${date}.snap;
 datetime=$(date +"%Y-%m-%dT%H:%M:%S")
 echo "Sleeping for 10 seconds in case any debugging needs to be done"
 sleep 10;
@@ -20,9 +20,9 @@ unset VAULT_TOKEN
 echo "Uploaded backup to s3. BUT we still need to validate the backup!!"
 echo "Assuming vault-reader-role in vault"
 # Authenticate and set VAULT_TOKEN
-export VAULT_TOKEN=$(vault write -field=token auth/kubernetes/login jwt=$SA_TOKEN role=reader-role)
+export VAULT_TOKEN=$(bao write -field=token auth/kubernetes/login jwt=$SA_TOKEN role=reader-role)
 
-echo "Reading first secret available in current vault environment with actual data. If it was updated since the backup was taken then this backup may fail!"
+echo "Reading first secret available in current bao environment with actual data. If it was updated since the backup was taken then this backup may fail!"
 
 # Global variable to store the first secret with data
 FIRST_SECRET=""
@@ -35,7 +35,7 @@ function find_first_secret_with_data() {
     fi
 
     local path=$1
-    local secrets=$(vault list -format=json "${path}" | jq -r '.[]' | grep -v '^\s*$')
+    local secrets=$(bao list -format=json "${path}" | jq -r '.[]' | grep -v '^\s*$')
 
     for secret in $secrets; do
         if [[ $secret == */ ]]; then
@@ -45,7 +45,7 @@ function find_first_secret_with_data() {
             # Adjust the path for reading the secret
             local adjusted_path="${path}${secret}"
             adjusted_path=${adjusted_path/\/metadata\//\/data\/}
-            local secret_data=$(vault read -format=json "$adjusted_path" | jq '.data')
+            local secret_data=$(bao read -format=json "$adjusted_path" | jq '.data')
             if [[ $secret_data != "{}" && $secret_data != "null" ]]; then
                 FIRST_SECRET="$adjusted_path"
                 return
@@ -60,13 +60,13 @@ echo "Found first secret with data: $FIRST_SECRET"
 
 # Reading the data/values within the first secret
 echo "Reading the data/values within the first secret"
-VAULT_OUTPUT=$(vault read -format=json "$FIRST_SECRET")
+VAULT_OUTPUT=$(bao read -format=json "$FIRST_SECRET")
 KEY_VALUES=$(echo $VAULT_OUTPUT | jq '.data.data')
 
 # Rest of your script logic
-echo "Getting s3 presigned url for vault backup"
+echo "Getting s3 presigned url for bao backup"
 BACKUP_S3_PRESIGNED_URL=$(aws s3 presign s3://${s3_destination} --expires-in 300)
-echo "Getting s3 presigned url for vault access tokens"
+echo "Getting s3 presigned url for bao access tokens"
 TOKENS_S3_PRESIGNED_URL=$(aws s3 presign s3://${S3_BUCKET_NAME}/${CAPTAIN_DOMAIN}/hashicorp-vault-init/vault_access.json --expires-in 300)
 
 BASE_JSON='{
