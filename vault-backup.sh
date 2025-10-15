@@ -73,7 +73,7 @@ BASE_JSON='{
     "source_backup_url": "'"$BACKUP_S3_PRESIGNED_URL"'",
     "source_keys_url": "'"$TOKENS_S3_PRESIGNED_URL"'",
     "path_values_map":{},
-    "vault_version": "1.14.10"
+    "vault_version": "'"${CACHED_VERSION_OPENBAO}"'"
 }'
 
 FIRST_SECRET_NO_PREFIX=${FIRST_SECRET#"secret/data/"}
