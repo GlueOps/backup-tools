@@ -6,7 +6,7 @@ ARG VERSION_AWS_CLI=2.31.15
 # renovate: datasource=github-tags depName=cli/cli
 ARG VERSION_GH_CLI=2.59.0
 # renovate: datasource=github-tags depName=openbao/openbao
-ARG VERSION_VAULT=2.4.1
+ARG VERSION_OPENBAO=2.4.1
 # renovate: datasource=github-tags depName=grafana/loki
 ARG VERSION_LOKI=2.9.10
 
@@ -15,7 +15,7 @@ RUN apt-get update -y && \
     apt-get upgrade -y && \
     apt-get install -y curl unzip groff-base less gnupg2 git jq tmux && \
     rm -rf /var/lib/apt/lists/*
-
+image
 # Install loki's logcli
 RUN curl --proto =https -L -o logcli-linux-amd64.zip https://github.com/grafana/loki/releases/download/v${VERSION_LOKI}/logcli-linux-amd64.zip \
     && unzip logcli-linux-amd64.zip \
@@ -28,13 +28,11 @@ RUN curl --proto =https "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${
     ./aws/install &&    \
     rm -rf awscliv2.zip aws
 
-# Install Vault CLI
-RUN curl --proto =https -fsSL https://releases.hashicorp.com/vault/${VERSION_VAULT}/vault_${VERSION_VAULT}_linux_amd64.zip -o vault.zip && \
-    unzip vault.zip && \
-    mv vault /usr/bin/ && \
-    chmod +x /usr/bin/vault && \
-    rm vault.zip
-
+# Install OpenBao CLI
+RUN curl --proto =https -LO https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/bao_${VERSION_OPENBAO}_linux_amd64.deb && \
+    dpkg -i bao_${VERSION_OPENBAO}_linux_amd64.deb && \
+    rm bao_${VERSION_OPENBAO}_linux_amd64.deb
+    
 # Install GitHub CLI
 RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     dpkg -i gh_${VERSION_GH_CLI}_linux_amd64.deb && \
