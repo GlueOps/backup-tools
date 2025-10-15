@@ -6,7 +6,7 @@ ARG VERSION_AWS_CLI=2.18.12
 # renovate: datasource=github-tags depName=cli/cli
 ARG VERSION_GH_CLI=2.59.0
 # renovate: datasource=github-tags depName=openbao/openbao
-ARG VERSION_VAULT=2.4.0
+ARG VERSION_VAULT=2.4.1
 # renovate: datasource=github-tags depName=grafana/loki
 ARG VERSION_LOKI=2.9.10
 
