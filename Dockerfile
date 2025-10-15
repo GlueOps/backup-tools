@@ -35,7 +35,7 @@ ARG VERSION_OPENBAO=2.4.1
 ADD https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
 
 # Unzip the Bao binary and clean up
-RUN tar -xzvf /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz bao && sudo mv bao /usr/local/bin/bao && \
+RUN tar -xzvf /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz bao && mv bao /usr/local/bin/bao && \
     rm /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
 
     
