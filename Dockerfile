@@ -28,10 +28,16 @@ RUN curl --proto =https "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${
     ./aws/install &&    \
     rm -rf awscliv2.zip aws
 
-# Install OpenBao CLI
-RUN curl --proto =https -LO https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/bao_${VERSION_OPENBAO}_linux_amd64.deb && \
-    dpkg -i bao_${VERSION_OPENBAO}_linux_amd64.deb && \
-    rm bao_${VERSION_OPENBAO}_linux_amd64.deb
+# renovate: datasource=github-tags depName=openbao/openbao
+ARG VERSION_OPENBAO=2.4.1
+  
+#Download and install Bao
+ADD https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
+
+# Unzip the Bao binary and clean up
+RUN tar -xzvf /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz bao && sudo mv bao /usr/local/bin/bao && \
+    rm /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
+
     
 # Install GitHub CLI
 RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERSION_GH_CLI}/gh_${VERSION_GH_CLI}_linux_amd64.deb && \
