@@ -51,6 +51,7 @@ ADD github-backup.sh /usr/bin/backup-github
 ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
 
+ENV CACHED_VERSION_OPENBAO=${VERSION_OPENBAO}
 
 WORKDIR /app
 
