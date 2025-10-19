@@ -35,28 +35,38 @@ function find_first_secret_with_data() {
     fi
 
     local path=$1
-    local secrets=$(bao list -format=json "${path}" | jq -r '.[]' | grep -v '^\s*$')
 
-    for secret in $secrets; do
+    # Use process substitution to avoid a subshell
+    while IFS= read -r secret; do
+        # If a secret was found in a deeper call, stop this loop.
+        if [[ -n "$FIRST_SECRET" ]]; then
+            break
+        fi
+
         if [[ $secret == */ ]]; then
             # It's a directory, go deeper
             find_first_secret_with_data "${path}${secret}"
         else
-            # Adjust the path for reading the secret
+            # It's a secret, check if it contains any data
             local adjusted_path="${path}${secret}"
             adjusted_path=${adjusted_path/\/metadata\//\/data\/}
-            local secret_data=$(bao read -format=json "$adjusted_path" | jq '.data')
-            if [[ $secret_data != "{}" && $secret_data != "null" ]]; then
+
+            # Use jq's exit code to robustly check if the secret has data
+            if bao read -format=json "$adjusted_path" | jq -e '.data | if type == "object" then length > 0 else false end' > /dev/null; then
+                # This assignment will now be visible outside the loop
                 FIRST_SECRET="$adjusted_path"
                 return
             fi
         fi
-    done
+    done < <(bao list -format=json "${path}" | jq -r '.[]')
 }
 
 # Find the first secret with actual data
 find_first_secret_with_data "secret/metadata/"
-echo "Found first secret with data: $FIRST_SECRET"
+
+if [ "$VAULT_BACKUP_ENABLE_DEBUG" == "TRUE" ]; then
+    echo "Found first secret with data: $FIRST_SECRET"
+fi
 
 # Reading the data/values within the first secret
 echo "Reading the data/values within the first secret"
