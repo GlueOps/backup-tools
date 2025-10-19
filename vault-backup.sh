@@ -36,6 +36,11 @@ function find_first_secret_with_data() {
 
     local path=$1
     bao list -format=json "${path}" | jq -r '.[]' | while IFS= read -r secret; do
+
+        if [[ -n "$FIRST_SECRET" ]]; then
+            break
+        fi
+
         if [[ $secret == */ ]]; then
             # It's a directory, go deeper
             find_first_secret_with_data "${path}${secret}"
