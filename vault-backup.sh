@@ -54,7 +54,10 @@ function find_first_secret_with_data() {
 
 # Find the first secret with actual data
 find_first_secret_with_data "secret/metadata/"
-echo "Found first secret with data: $FIRST_SECRET"
+
+if [ "$VAULT_DEBUG" == "TRUE" ]; then
+    echo "Found first secret with data: $FIRST_SECRET"
+fi
 
 # Reading the data/values within the first secret
 echo "Reading the data/values within the first secret"
