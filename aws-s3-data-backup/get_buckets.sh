@@ -31,5 +31,5 @@ export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.Credentials.AccessKeyId')
 export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey')
 export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
-# 3. List the buckets, pipe to grep to filter out "loki"
-aws s3api list-buckets --query "Buckets[].Name" --output text
+# 3. List the buckets and ignore loki buckets entirely
+aws s3api list-buckets --query "Buckets[? \!contains(Name, 'loki')].Name" --output text
