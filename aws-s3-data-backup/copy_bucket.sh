@@ -3,13 +3,14 @@ set -e
 
 ACCOUNT_ID=$1
 SRC_BUCKET_NAME=$2
+ACCOUNT_NAME=$3
 
-if [ -z "$ACCOUNT_ID" ] || [ -z "$SRC_BUCKET_NAME" ]; then
-    echo "Usage: $0 <ACCOUNT_ID> <BUCKET_NAME>" >&2
+if [ -z "$ACCOUNT_ID" ] || [ -z "$SRC_BUCKET_NAME" ] || [ -z "$ACCOUNT_NAME" ]; then
+    echo "Usage: $0 <ACCOUNT_ID> <BUCKET_NAME> <ACCOUNT_NAME>" >&2
     exit 1
 fi
 
-echo "--- Starting copy for $ACCOUNT_ID / $SRC_BUCKET_NAME ---"
+echo "--- Starting copy for $ACCOUNT_ID - $ACCOUNT_NAME / $SRC_BUCKET_NAME ---"
 
 # --- 1. DOWNLOAD ---
 echo "Assuming role to download..."
@@ -44,7 +45,7 @@ fi
 echo "Creating uncompressed tarball..."
 DATE=$(date +'%Y%m%d')
 # Changed extension to .tar since we are not gzipping
-FILENAME="${DATE}-${ACCOUNT_ID}_${SRC_BUCKET_NAME}.tar"
+FILENAME="${DATE}-${ACCOUNT_ID}_${ACCOUNT_NAME}_${SRC_BUCKET_NAME}.tar"
 TARBALL_PATH="/tmp/$FILENAME"
 rm -f $TARBALL_PATH # Use -f to avoid error if it doesn't exist
 
@@ -65,7 +66,7 @@ export AWS_SECRET_ACCESS_KEY=$DST_AWS_SECRET_ACCESS_KEY
 unset AWS_SESSION_TOKEN # CRITICAL: Unset the temporary session token
 
 # Upload the single tarball file instead of the directory
-DEST_PATH="s3://$DST_BUCKET/$FILENAME"
+DEST_PATH="s3://$DST_BUCKET/$DATE/$FILENAME"
 echo "Uploading to $DEST_PATH..."
 aws s3 cp $TARBALL_PATH $DEST_PATH
 if [ $? -ne 0 ]; then

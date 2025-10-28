@@ -25,23 +25,24 @@ export ROLE_NAME
 
 
 echo "Starting backup process..."
-
+COUNT=0
 # Get all accounts
 #
 # === MODIFICATION HERE ===
 # Read both ID and Name from the script. IFS=$'\t' handles the tab separator.
 ./get_accounts.sh | while IFS=$'\t' read -r ACCOUNT_ID ACCOUNT_NAME
 do
+    COUNT=$((COUNT+1))
     echo "================================================="
     # Print both variables
-    echo "Processing Account: $ACCOUNT_ID ($ACCOUNT_NAME)"
+    echo "Processing Account $COUNT: $ACCOUNT_ID ($ACCOUNT_NAME)"
     # === END MODIFICATION ===
 
     # For this account, get all buckets
     for BUCKET_NAME in $(./get_buckets.sh $ACCOUNT_ID)
     do
         # Copy this one bucket
-        ./copy_bucket.sh $ACCOUNT_ID $BUCKET_NAME
+        ./copy_bucket.sh $ACCOUNT_ID $BUCKET_NAME $ACCOUNT_NAME
     done
 
     echo "================================================="
