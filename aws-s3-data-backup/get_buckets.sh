@@ -9,7 +9,11 @@ fi
 
 # Uses MGMT_... env vars to assume the role
 export AWS_ACCESS_KEY_ID=$MGMT_AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$MGMT_AWS_SECRET_KEY
+#
+# THE FIX IS HERE:
+export AWS_SECRET_ACCESS_KEY=$MGMT_AWS_SECRET_ACCESS_KEY
+#
+#
 
 # 1. Assume the role
 CREDS=$(aws sts assume-role \
@@ -28,4 +32,4 @@ export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.Credentials.SecretAccessKey
 export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Credentials.SessionToken')
 
 # 3. List the buckets, pipe to grep to filter out "loki"
-aws s3api list-buckets --query "Buckets[].Name" --output text | grep -v "loki"
+aws s3api list-buckets --query "Buckets[].Name" --output text
