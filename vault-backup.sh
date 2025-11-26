@@ -71,7 +71,7 @@ fi
 # Reading the data/values within the first secret
 echo "Reading the data/values within the first secret"
 VAULT_OUTPUT=$(bao read -format=json "$FIRST_SECRET")
-KEY_VALUES=$(echo $VAULT_OUTPUT | jq '.data.data')
+KEY_VALUES=$(echo $VAULT_OUTPUT | jq -c '.data.data')
 
 # Rest of your script logic
 echo "Getting s3 presigned url for bao backup"
