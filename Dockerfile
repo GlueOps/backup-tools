@@ -8,7 +8,7 @@ ARG VERSION_GH_CLI=2.87.3
 # renovate: datasource=github-tags depName=openbao/openbao
 ARG VERSION_OPENBAO=2.4.4
 # renovate: datasource=github-tags depName=grafana/loki
-ARG VERSION_LOKI=2.9.10
+ARG VERSION_LOKI=3.7.1
 
 # Update the system and install required packages
 RUN apt-get update -y && \
