@@ -1,5 +1,5 @@
 # Use an official Ubuntu runtime as a parent image
-FROM ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
+FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
 
 # renovate: datasource=github-tags depName=aws/aws-cli
 ARG VERSION_AWS_CLI=2.34.0
