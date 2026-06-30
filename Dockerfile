@@ -2,13 +2,13 @@
 FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
 
 # renovate: datasource=github-tags depName=aws/aws-cli
-ARG VERSION_AWS_CLI=2.34.0
+ARG VERSION_AWS_CLI=2.34.57
 # renovate: datasource=github-tags depName=cli/cli
-ARG VERSION_GH_CLI=2.87.3
+ARG VERSION_GH_CLI=2.93.0
 # renovate: datasource=github-tags depName=openbao/openbao
-ARG VERSION_OPENBAO=2.4.4
+ARG VERSION_OPENBAO=2.5.4
 # renovate: datasource=github-tags depName=grafana/loki
-ARG VERSION_LOKI=2.9.17
+ARG VERSION_LOKI=3.7.2
 
 # Update the system and install required packages
 RUN apt-get update -y && \
@@ -29,8 +29,8 @@ RUN curl --proto =https "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${
     rm -rf awscliv2.zip aws
 
 # renovate: datasource=github-tags depName=openbao/openbao
-ARG VERSION_OPENBAO=2.4.4
-  
+ARG VERSION_OPENBAO=2.5.4
+
 #Download and install Bao
 ADD https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
 
