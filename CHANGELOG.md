@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.15.1](https://github.com/GlueOps/backup-tools/compare/v2.15.0...v2.15.1) (2026-07-06)
+
+
+### Miscellaneous Chores
+
+* **fallback:** update ubuntu ([#242](https://github.com/GlueOps/backup-tools/issues/242)) ([0535409](https://github.com/GlueOps/backup-tools/commit/05354094a9621afa8c64e73d72035b37e261cea5))
+* **patch:** update dataaxiom/ghcr-cleanup-action to v1.2.2 #patch ([#243](https://github.com/GlueOps/backup-tools/issues/243)) ([ea444b0](https://github.com/GlueOps/backup-tools/commit/ea444b0344c688c5f81fe864c46ddf51771691ef))
+
 ## [2.15.0](https://github.com/GlueOps/backup-tools/compare/v2.14.2...v2.15.0) (2026-06-30)
 
 
