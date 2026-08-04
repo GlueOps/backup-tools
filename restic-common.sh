@@ -108,13 +108,18 @@ prepare_backend_files() {
        RESTIC_EXTRA_OPTS and manage the connection yourself."
 
     local kh="${RESTIC_SSH_KNOWN_HOSTS:-}"
-    [ -n "$kh" ] && [ -r "$kh" ] || die "the sftp backend needs RESTIC_SSH_KNOWN_HOSTS
+    # Written as an explicit `if` rather than `A && B || C`: that form reads as
+    # if-then-else but is not one, and shellcheck flags it (SC2015). The logic
+    # here happened to be correct; spelling it out keeps it that way.
+    if [ -z "$kh" ] || [ ! -r "$kh" ]; then
+      die "the sftp backend needs RESTIC_SSH_KNOWN_HOSTS
        pointing at a readable known_hosts file, so the server's host key is
        PINNED. Generate it once with:
          ssh-keyscan -t ed25519 <host> > known_hosts
        and store it alongside the key. This is deliberately required: disabling
        host-key checking would let anything that can spoof DNS or occupy the
        route receive your backups."
+    fi
     cp "$kh" "$d/known_hosts" && chmod 644 "$d/known_hosts"
 
     # Passed through to ssh by restic. BatchMode makes a missing/rejected key
@@ -253,21 +258,40 @@ restic_setup() {
 # it, and reports success; the shrink guard cannot catch it either, because it
 # reports "no previous snapshot -- first run".
 ensure_repo() {
-  if restic "${ROPTS[@]}" cat config >/dev/null 2>&1; then
-    return 0
-  fi
-  if [ "${ALLOW_REPO_INIT:-false}" != "true" ]; then
-    die "cannot open the repository at $(redact_repo).
-       This means ONE of: it does not exist yet, RESTIC_PASSWORD is wrong, or
-       the backend is unreachable. restic cannot tell these apart.
+  local err rc=0
+  err="$(restic "${ROPTS[@]}" cat config 2>&1 >/dev/null)" || rc=$?
 
-       If you are genuinely creating this repository for the first time, re-run
-       once with ALLOW_REPO_INIT=true, then REMOVE that setting.
+  # restic 0.19.1 DOES distinguish these (cmd/restic/main.go): 10 is raised only
+  # via ErrNoRepository when the backend reports genuine non-existence, and 12
+  # only via ErrNoKeyFound. Everything else -- refused connection, permission
+  # denied -- is a plain 1. Treating them alike previously meant a wrong
+  # password with ALLOW_REPO_INIT=true fell straight through to `restic init`.
+  case "$rc" in
+    0) return 0 ;;
+    12)
+      die "the repository at $(redact_repo) exists, but RESTIC_PASSWORD is WRONG.
+       Do NOT set ALLOW_REPO_INIT to work around this -- there is nothing to
+       create. Fix the password.
+       restic: ${err}"
+      ;;
+    10) : ;;   # genuinely absent: fall through to the init gate below
+    *)
+      die "cannot reach the backend for $(redact_repo) (restic exit ${rc}).
+       This is a connectivity or permissions problem, not a missing repository,
+       so ALLOW_REPO_INIT would not help.
+       restic: ${err}"
+      ;;
+  esac
+
+  if [ "${ALLOW_REPO_INIT:-false}" != "true" ]; then
+    die "no repository exists at $(redact_repo).
+       If you are genuinely creating it for the first time, re-run once with
+       ALLOW_REPO_INIT=true, then REMOVE that setting.
 
        Refusing to auto-create, because a typo in RESTIC_REPOSITORY would
        otherwise start a fresh empty backup history that reports success."
   fi
-  log "ALLOW_REPO_INIT=true and no readable repository -- running restic init"
+  log "ALLOW_REPO_INIT=true and no repository present -- running restic init"
   restic "${ROPTS[@]}" init
 }
 
