@@ -17,8 +17,8 @@
 set -Eeuo pipefail
 
 SUB="${1:-}"
-log()  { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
-die()  { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] FATAL: $*" >&2; exit "${2:-1}"; }
+# shellcheck source=restic-common.sh
+. /usr/lib/backup-tools/restic-common.sh
 
 # Cohort directory under the export root. Deployment-specific -- set it in the
 # job spec, not here.
@@ -38,13 +38,11 @@ fi
 # nothing and every lookup reports "snapshot not found".
 HOSTTAG="${BACKUP_HOST:-foobar}"
 
-# Clear locks so a restore is not blocked by a crashed job. NOTE: restic removes
-# ANY lock older than 30 minutes regardless of host or liveness, and only does a
-# same-host process-liveness check below that age -- so this is not purely a
-# "stale lock" operation. Never fatal: a read-only mode must not die because the
-# object store hiccuped. Called per-branch, not before dispatch, so a mistyped
-# subcommand cannot mutate the repository.
-try_unlock() { restic unlock || log "WARNING: restic unlock failed; continuing"; }
+restic_setup
+# A restore must never create a repository -- if it cannot open one, the
+# parameters are wrong and proceeding would restore nothing from nowhere.
+ALLOW_REPO_INIT=false ensure_repo
+
 
 # Resolve whatever the operator typed ("latest", a short id) to a concrete id,
 # so every later message and confirmation token refers to one specific snapshot.
@@ -52,7 +50,7 @@ resolve_snapshot() {
   local want="$1" id
   # stderr is deliberately NOT swallowed: an S3 outage and a genuinely missing
   # snapshot must not both surface as "snapshot not found" during an incident.
-  id="$(restic snapshots --json "$want" | jq -r 'if length > 0 then .[-1].short_id else empty end')"
+  id="$(restic "${ROPTS[@]}" snapshots --json "$want" | jq -r 'if length > 0 then .[-1].short_id else empty end')"
   [ -n "$id" ] || die "snapshot '$want' not found. Run in 'list' mode to see what exists."
   echo "$id"
 }
@@ -70,7 +68,7 @@ student)
   # ---- list: safe default, writes nothing -----------------------------------
   if [ "$MODE" = "list" ]; then
     log "snapshots available:"
-    restic snapshots --host "$HOSTTAG" --tag daily
+    restic "${ROPTS[@]}" snapshots --host "$HOSTTAG" --tag daily
     if [ -n "${RESTORE_STUDENT:-}" ]; then
       log ""
       log "contents of '${RESTORE_STUDENT}' in the latest snapshot:"
@@ -78,7 +76,7 @@ student)
       # and pipefail propagates 141 -- so any student with >50 files printed
       # their contents AND THEN "nothing found", which is the first thing an
       # operator reads during an incident. Branch on restic's own status.
-      if restic ls latest "/data/${TERM_DIR}/${RESTORE_STUDENT}" > /tmp/ls.out 2>/tmp/ls.err; then
+      if restic "${ROPTS[@]}" ls latest "/data/${TERM_DIR}/${RESTORE_STUDENT}" > /tmp/ls.out 2>/tmp/ls.err; then
         head -50 /tmp/ls.out
         [ "$(wc -l < /tmp/ls.out)" -gt 50 ] && log "  ... ($(wc -l < /tmp/ls.out) entries total)"
       else
@@ -150,14 +148,14 @@ student)
   # against what is already stored, and cannot be lost to a full disk.
   if [ "$MODE" != "additive" ] && [ -d "$LIVE" ]; then
     log "taking pre-restore safety snapshot of ${LIVE}"
-    restic backup "$LIVE" \
+    restic "${ROPTS[@]}" backup "$LIVE" \
       --host "$HOSTTAG" \
       --tag pre-restore --tag "pre-restore-${STUDENT}" \
-      --no-scan --retry-lock 30m
+      --no-scan
     # Print the id, not just the tag: this is the most-run path, the operator
     # needs something to roll back TO, and by the second attempt the tag alone
     # is ambiguous.
-    PRE_STU="$(restic snapshots --host "$HOSTTAG" --tag "pre-restore-${STUDENT}" --json \
+    PRE_STU="$(restic "${ROPTS[@]}" snapshots --host "$HOSTTAG" --tag "pre-restore-${STUDENT}" --json \
                | jq -r 'if length > 0 then .[-1].short_id else empty end')"
     [ -n "${PRE_STU:-}" ] || die "pre-restore snapshot could not be resolved.
        Refusing to modify ${LIVE} without a recorded rollback point."
@@ -166,10 +164,10 @@ student)
     log "  RESTORE_CONFIRM=restore-${STUDENT}-${PRE_STU}"
   fi
 
-  ARGS=( "$SRC" --target "$LIVE" --sparse --overwrite "$OVERWRITE" --retry-lock 30m )
+  ARGS=( "$SRC" --target "$LIVE" --sparse --overwrite "$OVERWRITE" )
   [ "$DELETE" = true ] && ARGS+=( --delete )
 
-  restic restore "${ARGS[@]}" --verify
+  restic "${ROPTS[@]}" restore "${ARGS[@]}" --verify
 
   log "RESTORE (${MODE}) COMPLETE for ${STUDENT} from ${SNAPID}"
   log ""
@@ -192,15 +190,15 @@ full)
   # ---- verify: safe default, writes nothing ---------------------------------
   if [ "$MODE" = "verify" ]; then
     log "snapshots available:"
-    restic snapshots --host "$HOSTTAG" --tag daily
+    restic "${ROPTS[@]}" snapshots --host "$HOSTTAG" --tag daily
     log ""
     log "repository integrity check:"
-    restic check --retry-lock 30m
+    restic "${ROPTS[@]}" check
     if [ "${RESTORE_SNAPSHOT_ID:-REPLACE_ME}" != "REPLACE_ME" ]; then
       SNAPID="$(resolve_snapshot "$SNAP_IN")"
       log ""
       log "snapshot ${SNAPID} contents vs live:"
-      restic stats --json "$SNAPID" | jq -r '"  snapshot: \(.total_file_count) files, \(.total_size) bytes"'
+      restic "${ROPTS[@]}" stats --json "$SNAPID" | jq -r '"  snapshot: \(.total_file_count) files, \(.total_size) bytes"'
       echo "  live:     $(find /data -xdev -type f 2>/dev/null | wc -l) files, $(du -sb /data 2>/dev/null | cut -f1) bytes"
     fi
     exit 0
@@ -229,7 +227,7 @@ full)
       # ${SNAPID}:/data, not ${SNAPID} -- see the comment on the commit branch.
       # Staging must reproduce the exact layout commit produces, or the operator
       # signs off on a layout the real restore will not recreate.
-      restic restore "${SNAPID}:/data" --target "$STAGE" --sparse --retry-lock 30m --verify
+      restic "${ROPTS[@]}" restore "${SNAPID}:/data" --target "$STAGE" --sparse --verify
       log "STAGED. Inspect it from any pod on the PVC, then re-run with RESTORE_MODE=commit."
       log "Free space check:  df -h /data"
       ;;
@@ -241,11 +239,11 @@ full)
         || die "full restore requires RESTORE_CONFIRM=${WANT} (set via PR)." 2
 
       log "pre-restore safety snapshot of the ENTIRE live export"
-      restic backup /data \
+      restic "${ROPTS[@]}" backup /data \
         --host "$HOSTTAG" \
         --tag pre-restore --tag "pre-restore-full" \
-        --no-scan --retry-lock 30m
-      PRE="$(restic snapshots --host "$HOSTTAG" --tag pre-restore-full --json \
+        --no-scan
+      PRE="$(restic "${ROPTS[@]}" snapshots --host "$HOSTTAG" --tag pre-restore-full --json \
              | jq -r 'if length > 0 then .[-1].short_id else empty end')"
       # This id is the only thing standing between the operator and recovery if
       # the restore goes wrong. Never let it be empty or the string "null".
@@ -261,8 +259,8 @@ full)
       # "data"), it would RECURSIVELY DELETE THE ENTIRE LIVE EXPORT and report
       # success. The :subfolder form rebases paths onto the target so the layout
       # is reproduced in place. Verified: restic 0.19.1.
-      restic restore "${SNAPID}:/data" --target /data --sparse \
-        --overwrite always --delete --retry-lock 30m --verify
+      restic "${ROPTS[@]}" restore "${SNAPID}:/data" --target /data --sparse \
+        --overwrite always --delete --verify
 
       log "FULL RESTORE COMPLETE from ${SNAPID}"
       log "Rollback if needed:  RESTORE_SNAPSHOT_ID=${PRE} RESTORE_MODE=commit"
