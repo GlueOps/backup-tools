@@ -80,6 +80,10 @@ prepare_backend_files() {
 
     local d="${TMPDIR:-/tmp}/.restic-ssh"
     local key="${RESTIC_SSH_KEY:-}"
+    # What the operator CONFIGURED, for logging. `key` below becomes the private
+    # copy that ssh actually reads, which is an implementation detail and not
+    # what someone debugging "which key is it using?" wants to see.
+    local key_src=""
 
     # The key material can arrive two ways, and both end up as a private,
     # mode-0600 file that ssh will accept:
@@ -109,6 +113,7 @@ prepare_backend_files() {
         || die "RESTIC_SSH_KEY_CONTENT is not a usable private key. If it came
        from a secret manager, check it kept its newlines -- a PEM collapsed onto
        one line is the usual cause."
+      key_src="RESTIC_SSH_KEY_CONTENT (env)"
       log "sftp: using the key supplied via RESTIC_SSH_KEY_CONTENT"
     elif [ -n "$key" ]; then
       [ -r "$key" ] || die "RESTIC_SSH_KEY='${key}' is not readable by uid $(id -u).
@@ -119,6 +124,7 @@ prepare_backend_files() {
       # whatever uid we happen to be and lock it down.
       mkdir -p "$d" && chmod 700 "$d"
       cp "$key" "$d/id" && chmod 600 "$d/id"
+      key_src="$key"
       key="$d/id"
     fi
 
@@ -166,7 +172,7 @@ prepare_backend_files() {
     # Passed through to ssh by restic. BatchMode makes a missing/rejected key
     # fail immediately instead of hanging on a password prompt in a CronJob.
     ROPTS+=(-o "sftp.args=-i ${d}/id -o UserKnownHostsFile=${d}/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes")
-    log "sftp: using key ${key} with pinned host keys from ${kh}"
+    log "sftp: using key ${key_src} with pinned host keys from ${kh}"
   fi
 
   if [ "$backend" = "gs" ] && [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
