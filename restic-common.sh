@@ -81,10 +81,36 @@ prepare_backend_files() {
     local d="${TMPDIR:-/tmp}/.restic-ssh"
     local key="${RESTIC_SSH_KEY:-}"
 
-    # Copy the key whenever one is supplied, even in user-managed mode: a custom
-    # sftp.command usually still needs it, and the permission fix below applies
-    # either way.
-    if [ -n "$key" ]; then
+    # The key material can arrive two ways, and both end up as a private,
+    # mode-0600 file that ssh will accept:
+    #
+    #   RESTIC_SSH_KEY          a PATH to a mounted Secret volume
+    #   RESTIC_SSH_KEY_CONTENT  the key ITSELF, as an env var
+    #
+    # The env form exists because envFrom cannot deliver files, so a Secret
+    # projected as environment variables -- the common Kubernetes shape -- can
+    # carry the key without a second Secret and a volume mount. Exposure is
+    # equivalent: it is a Kubernetes Secret either way, and the private file
+    # below is what ssh actually reads.
+    if [ -n "${RESTIC_SSH_KEY_CONTENT:-}" ] && [ -n "$key" ]; then
+      die "both RESTIC_SSH_KEY and RESTIC_SSH_KEY_CONTENT are set. Pick one --
+       a path to a mounted key, or the key itself. Refusing to guess."
+    fi
+
+    if [ -n "${RESTIC_SSH_KEY_CONTENT:-}" ]; then
+      mkdir -p "$d" && chmod 700 "$d"
+      # Write with a trailing newline and no leading blank line: ssh rejects a
+      # key whose PEM armour is malformed, and env round-trips often lose the
+      # final newline.
+      printf '%s\n' "${RESTIC_SSH_KEY_CONTENT%$'\n'}" > "$d/id"
+      chmod 600 "$d/id"
+      key="$d/id"
+      ssh-keygen -y -f "$d/id" >/dev/null 2>&1 \
+        || die "RESTIC_SSH_KEY_CONTENT is not a usable private key. If it came
+       from a secret manager, check it kept its newlines -- a PEM collapsed onto
+       one line is the usual cause."
+      log "sftp: using the key supplied via RESTIC_SSH_KEY_CONTENT"
+    elif [ -n "$key" ]; then
       [ -r "$key" ] || die "RESTIC_SSH_KEY='${key}' is not readable by uid $(id -u).
        Check the Secret volume is mounted and its defaultMode allows this uid."
       # ssh REFUSES a private key that is group- or world-readable. Kubernetes
@@ -93,6 +119,7 @@ prepare_backend_files() {
       # whatever uid we happen to be and lock it down.
       mkdir -p "$d" && chmod 700 "$d"
       cp "$key" "$d/id" && chmod 600 "$d/id"
+      key="$d/id"
     fi
 
     if [ "$user_managed" = true ]; then
@@ -102,12 +129,26 @@ prepare_backend_files() {
       return 0
     fi
 
-    [ -n "$key" ] || die "the sftp backend needs RESTIC_SSH_KEY set to the path of a
-       mounted SSH private key (e.g. /secrets/ssh/id_ed25519).
+    [ -n "$key" ] || die "the sftp backend needs an SSH private key. Set either
+       RESTIC_SSH_KEY (a path to a mounted key) or RESTIC_SSH_KEY_CONTENT (the
+       key itself, for Secrets projected as environment variables).
+       restic cannot use password authentication -- its own docs require a
+       passwordless key, because an automated backup cannot answer a prompt.
        Alternatively supply your own sftp.command or sftp.args via
        RESTIC_EXTRA_OPTS and manage the connection yourself."
 
+    # known_hosts likewise: a path, or the content itself. Unlike the key this
+    # is NOT secret -- it is a public host key -- so the content form is usually
+    # cleanest as a literal in the deployment config.
     local kh="${RESTIC_SSH_KNOWN_HOSTS:-}"
+    if [ -n "${RESTIC_SSH_KNOWN_HOSTS_CONTENT:-}" ]; then
+      mkdir -p "$d" && chmod 700 "$d"
+      printf '%s\n' "${RESTIC_SSH_KNOWN_HOSTS_CONTENT%$'\n'}" > "$d/known_hosts"
+      chmod 644 "$d/known_hosts"
+      ROPTS+=(-o "sftp.args=-i ${d}/id -o UserKnownHostsFile=${d}/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes")
+      log "sftp: host keys pinned from RESTIC_SSH_KNOWN_HOSTS_CONTENT"
+      return 0
+    fi
     # Written as an explicit `if` rather than `A && B || C`: that form reads as
     # if-then-else but is not one, and shellcheck flags it (SC2015). The logic
     # here happened to be correct; spelling it out keeps it that way.
