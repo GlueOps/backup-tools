@@ -137,6 +137,44 @@ grep -q "using key /tmp/k2 with pinned host keys" <<<"$LAST_OUT" \
 grep -qi "StrictHostKeyChecking=no" <<<"$LAST_OUT" && bad "host-key checking was disabled" \
   || ok "never disables host-key checking"
 
+echo "=== 9c. SSH material supplied as env CONTENT rather than a file path ==="
+ssh-keygen -qt ed25519 -N "" -f /tmp/k3 2>/dev/null
+KEYC="$(cat /tmp/k3)"; KHC="h ssh-ed25519 AAAA"
+# should reach the connection stage, i.e. get past all key/known_hosts checks
+run RESTIC_REPOSITORY="sftp:nonexistent.invalid:/p" RESTIC_PASSWORD=t \
+    RESTIC_SSH_KEY_CONTENT="$KEYC" RESTIC_SSH_KNOWN_HOSTS_CONTENT="$KHC"
+grep -q "using the key supplied via RESTIC_SSH_KEY_CONTENT" <<<"$LAST_OUT" \
+  && ok "accepted the key from env content" || bad "did not accept key content: $(head -3 <<<"$LAST_OUT"|tr '\n' ' ')"
+grep -q "host keys pinned from RESTIC_SSH_KNOWN_HOSTS_CONTENT" <<<"$LAST_OUT" \
+  && ok "accepted known_hosts from env content" || bad "did not accept known_hosts content"
+[ "$(stat -c %a /tmp/.restic-ssh/id 2>/dev/null)" = "600" ] \
+  && ok "key written as mode 600 (ssh refuses anything looser)" \
+  || bad "key mode is $(stat -c %a /tmp/.restic-ssh/id 2>/dev/null), expected 600"
+
+fails_with "a mangled key is rejected with a useful message" "not a usable private key" \
+  RESTIC_REPOSITORY="sftp:h:/p" RESTIC_PASSWORD=t \
+  RESTIC_SSH_KEY_CONTENT="-----BEGIN OPENSSH PRIVATE KEY----- allonoline -----END OPENSSH PRIVATE KEY-----" \
+  RESTIC_SSH_KNOWN_HOSTS_CONTENT="$KHC"
+
+fails_with "path and content together are refused, not silently guessed" "Pick one" \
+  RESTIC_REPOSITORY="sftp:h:/p" RESTIC_PASSWORD=t \
+  RESTIC_SSH_KEY=/tmp/k3 RESTIC_SSH_KEY_CONTENT="$KEYC"
+
+fails_with "still demands a key when neither form is given" "RESTIC_SSH_KEY_CONTENT" \
+  RESTIC_REPOSITORY="sftp:h:/p" RESTIC_PASSWORD=t
+
+echo "=== 9d. env-content key works for a real sftp round trip ==="
+mkdir -p /srv/envrepo
+if env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root TMPDIR=/tmp \
+     RESTIC_REPOSITORY="sftp:localhost:/srv/envrepo" RESTIC_PASSWORD=t \
+     RESTIC_SSH_KEY_CONTENT="$KEYC" RESTIC_SSH_KNOWN_HOSTS_CONTENT="$KHC" \
+     RESTIC_EXTRA_OPTS="sftp.command=/usr/lib/openssh/sftp-server" \
+     ALLOW_REPO_INIT=true BACKUP_HOST=envtest \
+     /usr/bin/backup-nfs backup >/tmp/envrt.log 2>&1; then
+  ok "full backup over sftp using an env-supplied key"
+else bad "env-key sftp backup failed"; tail -6 /tmp/envrt.log; fi
+[ -f /srv/envrepo/config ] && ok "repo created at the sftp path" || bad "no repo created"
+
 echo "=== 10. sftp: real backup+restore round trip over the SFTP backend ==="
 # sftp.command points restic at a local sftp-server, so this exercises the real
 # SFTP code path with no network. It also exercises RESTIC_EXTRA_OPTS.
