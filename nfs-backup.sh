@@ -13,8 +13,9 @@
 #   RESTIC_KEEP_TAGS   comma-separated tags pinned against pruning (optional)
 #   HEARTBEAT_URL      external dead-man's switch, pinged on success (optional)
 #
-# NOTE ON FIDELITY: there are deliberately NO --exclude flags anywhere in this
-# script. The requirement is a complete backup. restic captures uid/gid, mode,
+# NOTE ON FIDELITY: the only --exclude is /data/.restore-staging, which is
+# scratch space written by restore-nfs, not user data. Nothing under the actual
+# export is ever excluded -- the requirement is a complete backup. restic captures uid/gid, mode,
 # setuid/setgid/sticky, symlinks, hardlinks, sparse content, timestamps and
 # user.* xattrs with no flags. (There is no xattr flag on `restic backup` at
 # all; --exclude-xattr / --include-xattr are restore-side filters.)
@@ -64,7 +65,14 @@ backup)
   fi
 
   rc=0
+  # The ONLY --exclude in this script, and it is not student data: `restore-nfs
+  # full stage` materialises a whole copy of the export into
+  # /data/.restore-staging. Backing that up doubles the snapshot's file count,
+  # and removing it halves it -- which trips the shrink guard below and pages
+  # someone with "possible data loss" one run after a staged restore, at the
+  # worst possible moment.
   restic "${ROPTS[@]}" backup /data \
+    --exclude /data/.restore-staging \
     --host "$HOSTTAG" \
     --tag daily \
     --no-scan \

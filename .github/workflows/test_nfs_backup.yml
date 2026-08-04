@@ -1,0 +1,75 @@
+name: test-nfs-backup
+
+# Builds the image and runs both NFS backup/restore suites.
+#
+# These exercise real backup and DESTRUCTIVE restore paths against a real restic
+# repository, so they need the built image rather than a linter. Everything runs
+# inside the container against local/loopback repositories -- no network, no
+# credentials, no external storage.
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'nfs-backup.sh'
+      - 'nfs-restore.sh'
+      - 'restic-common.sh'
+      - 'test-nfs-backup/**'
+      - '.github/workflows/test_nfs_backup.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'nfs-backup.sh'
+      - 'nfs-restore.sh'
+      - 'restic-common.sh'
+      - 'test-nfs-backup/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Shell syntax check
+        run: |
+          for f in nfs-backup.sh nfs-restore.sh restic-common.sh \
+                   test-nfs-backup/e2e-test.sh test-nfs-backup/backend-test.sh; do
+            bash -n "$f" && echo "ok  $f"
+          done
+
+      # Advisory. Kept visible rather than blocking: RESTIC_EXTRA_OPTS is
+      # deliberately left unquoted so the caller can pass several -o options,
+      # which shellcheck flags as SC2086 by design.
+      - name: shellcheck (advisory)
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          # SC1091: restic-common.sh is sourced from an absolute in-image path.
+          shellcheck -e SC1091 nfs-backup.sh nfs-restore.sh restic-common.sh
+
+      - name: Build image
+        run: docker build -t backup-tools-test .
+
+      - name: Backend, preflight and SFTP suite
+        run: |
+          docker run --rm \
+            -v "$PWD/test-nfs-backup/backend-test.sh:/bt.sh:ro" \
+            backup-tools-test bash -c '
+              apt-get update -qq >/dev/null 2>&1
+              apt-get install -y -qq openssh-sftp-server openssh-client >/dev/null 2>&1
+              bash /bt.sh'
+
+      - name: Backup/restore behaviour and metadata-fidelity suite
+        run: |
+          docker run --rm \
+            -v "$PWD/test-nfs-backup/e2e-test.sh:/e2e.sh:ro" \
+            backup-tools-test bash -c '
+              apt-get update -qq >/dev/null 2>&1
+              apt-get install -y -qq attr >/dev/null 2>&1
+              bash /e2e.sh'

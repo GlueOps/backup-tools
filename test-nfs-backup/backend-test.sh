@@ -195,6 +195,79 @@ perm=$(stat -c %a /tmp/u1337/.restic-ssh/id 2>/dev/null)
 [ "$(stat -c %U /tmp/u1337/.restic-ssh/id 2>/dev/null)" != "root" ] \
   && ok "copy is owned by the running uid, not root" || bad "copy still root-owned"
 
+echo "=== 12. D1: a second restore must not resolve 'latest' to a pre-restore snapshot ==="
+export RESTIC_REPOSITORY=/tmp/d1repo RESTIC_PASSWORD=t BACKUP_HOST=h RESTORE_TERM=t1
+unset RESTIC_SSH_KEY RESTIC_SSH_KNOWN_HOSTS RESTIC_EXTRA_OPTS
+restic init -q >/dev/null 2>&1
+mkdir -p /data/t1/alice && echo "GOOD-WORK" > /data/t1/alice/thesis.txt
+restic backup /data --host h --tag daily --no-scan -q >/dev/null 2>&1
+echo GARBAGE1 > /data/t1/alice/thesis.txt
+RESTORE_MODE=overwrite RESTORE_STUDENT=alice restore-nfs student >/dev/null 2>&1
+[ "$(cat /data/t1/alice/thesis.txt)" = "GOOD-WORK" ] && ok "run 1 restored the daily snapshot" || bad "run 1 wrong"
+echo GARBAGE2 > /data/t1/alice/thesis.txt
+RESTORE_MODE=overwrite RESTORE_STUDENT=alice restore-nfs student >/dev/null 2>&1
+[ "$(cat /data/t1/alice/thesis.txt)" = "GOOD-WORK" ] \
+  && ok "run 2 also restored the daily, NOT run 1's pre-restore snapshot" \
+  || bad "run 2 restored DAMAGED data ($(cat /data/t1/alice/thesis.txt)) -- latest resolved to a pre-restore snapshot"
+
+PRE=$(restic snapshots --host h --tag pre-restore --json | jq -r ".[0].short_id")
+if RESTORE_MODE=exact RESTORE_STUDENT=alice RESTORE_SNAPSHOT_ID="$PRE" \
+     RESTORE_CONFIRM="restore-alice-${PRE}" restore-nfs student >/dev/null 2>&1; then
+  ok "an EXPLICIT pre-restore id is still usable for rollback"
+else bad "rollback to an explicit pre-restore id was broken by the filters"; fi
+
+echo "=== 13. D2: a typo'd student name is actually diagnosed ==="
+echo "GOOD-WORK" > /data/t1/alice/thesis.txt
+RESTORE_MODE=list RESTORE_STUDENT=nosuchstudent restore-nfs student >/tmp/l1.log 2>&1
+grep -q "nothing found at that path" /tmp/l1.log && ok "unknown student diagnosed" \
+  || bad "no diagnostic for an unknown student (restic ls exits 0 even when the path is absent)"
+RESTORE_MODE=list RESTORE_STUDENT=alice restore-nfs student >/tmp/l2.log 2>&1
+grep -q "thesis.txt" /tmp/l2.log && ok "a real student still lists their files" || bad "real student listing broken"
+grep -q "nothing found at that path" /tmp/l2.log && bad "false 'nothing found' for a real student" \
+  || ok "no false negative for a real student"
+
+echo "=== 14. D3: wrong password and unreachable backend are told apart ==="
+fails_with "wrong password is named as such" "RESTIC_PASSWORD is WRONG" \
+  RESTIC_REPOSITORY=/tmp/d1repo RESTIC_PASSWORD=DEFINITELYWRONG ALLOW_REPO_INIT=true
+fails_with "wrong password is not 'fixed' by ALLOW_REPO_INIT" "nothing to
+       create" \
+  RESTIC_REPOSITORY=/tmp/d1repo RESTIC_PASSWORD=DEFINITELYWRONG ALLOW_REPO_INIT=true
+# A backend error that is neither "missing" (10) nor "wrong password" (12).
+# Deliberately NOT a network target: restic retries connection failures with
+# backoff for minutes, so an unreachable host makes the suite look hung rather
+# than asserting anything. A permission-denied local path fails immediately with
+# exit 1, exercising the same branch. (It also has to run as non-root, since
+# root bypasses the permission check -- hence restore-nfs, which is the command
+# designed to run unprivileged.)
+mkdir -p /tmp/noperm/repo && chmod 000 /tmp/noperm
+install -d -o 1337 -g 1337 /tmp/u2 2>/dev/null || true
+out=$(setpriv --reuid=1337 --regid=1337 --clear-groups \
+      env PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp/u2 TMPDIR=/tmp/u2 \
+      RESTIC_REPOSITORY=/tmp/noperm/repo RESTIC_PASSWORD=t ALLOW_REPO_INIT=true \
+      BACKUP_HOST=h RESTORE_TERM=t1 RESTORE_MODE=list \
+      /usr/bin/restore-nfs student 2>&1) || true
+grep -q "cannot reach the backend" <<<"$out" \
+  && ok "a non-10/non-12 backend error is reported as such, not as a missing repo" \
+  || bad "backend error misreported: $(head -2 <<<"$out" | tr '\n' ' ')"
+chmod 755 /tmp/noperm
+
+echo "=== 15. D4: staged restores do not trip the shrink guard ==="
+export RESTIC_REPOSITORY=/tmp/d4repo ALLOW_REPO_INIT=true RESTIC_PASSWORD=t
+rm -rf /data/.restore-staging; mkdir -p /data/.backup-canary; rm -rf /canary; ln -s /data/.backup-canary /canary
+for i in $(seq 1 120); do echo x > /data/t1/alice/f$i; done
+backup-nfs backup >/dev/null 2>&1; backup-nfs backup >/dev/null 2>&1
+SNAP=$(restic snapshots --host h --tag daily --json | jq -r ".[-1].short_id")
+mkdir -p "/data/.restore-staging/$SNAP"
+restic restore "${SNAP}:/data" --target "/data/.restore-staging/$SNAP" -q >/dev/null 2>&1
+backup-nfs backup >/tmp/s1.log 2>&1 && ok "backup succeeds while a restore is staged" || { bad "backup failed with staging present"; tail -3 /tmp/s1.log; }
+rm -rf /data/.restore-staging
+if backup-nfs backup >/tmp/s2.log 2>&1; then
+  ok "backup succeeds after the staging dir is removed (no false data-loss alert)"
+else
+  bad "SHRINK GUARD FALSE POSITIVE after staging cleanup"; grep -E "file count|fell" /tmp/s2.log
+fi
+grep -q "restore-staging" /tmp/s2.log && bad "staging dir was backed up" || ok "staging dir excluded from the snapshot"
+
 echo
 echo "================= RESULT: $PASS passed, $FAIL failed ================="
 [ "$FAIL" -eq 0 ]

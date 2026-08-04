@@ -48,9 +48,16 @@ ALLOW_REPO_INIT=false ensure_repo
 # so every later message and confirmation token refers to one specific snapshot.
 resolve_snapshot() {
   local want="$1" id
+  # --host/--tag are ESSENTIAL, not cosmetic. This script writes `pre-restore`
+  # snapshots under the SAME host, so an unfiltered "latest" resolves to the
+  # safety snapshot taken by the PREVIOUS restore -- i.e. the student's damaged
+  # data -- and a second run of an identical command restores the damage over
+  # the good copy, reporting success. restic ignores these filters when an
+  # explicit snapshot id is given (it says so on stderr), so rolling back to a
+  # specific pre-restore id still works.
   # stderr is deliberately NOT swallowed: an S3 outage and a genuinely missing
   # snapshot must not both surface as "snapshot not found" during an incident.
-  id="$(restic "${ROPTS[@]}" snapshots --json "$want" | jq -r 'if length > 0 then .[-1].short_id else empty end')"
+  id="$(restic "${ROPTS[@]}" snapshots --host "$HOSTTAG" --tag daily --json "$want" | jq -r 'if length > 0 then .[-1].short_id else empty end')"
   [ -n "$id" ] || die "snapshot '$want' not found. Run in 'list' mode to see what exists."
   echo "$id"
 }
@@ -74,11 +81,22 @@ student)
       log "contents of '${RESTORE_STUDENT}' in the latest snapshot:"
       # Not `restic ls ... | head -50`: head exits at 50, restic takes SIGPIPE,
       # and pipefail propagates 141 -- so any student with >50 files printed
-      # their contents AND THEN "nothing found", which is the first thing an
-      # operator reads during an incident. Branch on restic's own status.
-      if restic "${ROPTS[@]}" ls latest "/data/${TERM_DIR}/${RESTORE_STUDENT}" > /tmp/ls.out 2>/tmp/ls.err; then
-        head -50 /tmp/ls.out
-        [ "$(wc -l < /tmp/ls.out)" -gt 50 ] && log "  ... ($(wc -l < /tmp/ls.out) entries total)"
+      # their contents AND THEN "nothing found".
+      #
+      # Branch on CONTENT, not exit status: `restic ls` exits 0 even for a path
+      # that does not exist in the snapshot, and always writes a one-line
+      # "snapshot ... filtered by [...]" header to stdout. Testing the status
+      # made the diagnostic unreachable, so a typo'd student name silently
+      # produced an empty listing with no explanation.
+      #
+      # --host/--tag for the same reason as resolve_snapshot: an unfiltered
+      # `latest` can be a pre-restore snapshot, giving a misleading view.
+      restic "${ROPTS[@]}" ls --host "$HOSTTAG" --tag daily latest \
+        "/data/${TERM_DIR}/${RESTORE_STUDENT}" > /tmp/ls.out 2>/tmp/ls.err || true
+      entries=$(( $(wc -l < /tmp/ls.out) - 1 ))   # line 1 is restic's header
+      if [ "$entries" -gt 0 ]; then
+        head -51 /tmp/ls.out
+        [ "$entries" -gt 50 ] && log "  ... (${entries} entries total)"
       else
         log "  (nothing found at that path — check the student name and term)"
         head -3 /tmp/ls.err >&2 || true
@@ -115,8 +133,10 @@ student)
       # cannot delete. This is the right answer for "I deleted my work".
       OVERWRITE="never"; DELETE=false; NEEDS_CONFIRM=false ;;
     overwrite)
-      # Also replaces files whose content differs. Keeps files the snapshot
-      # does not have. This PERMANENTLY REPLACES work created since the
+      # Also replaces files whose size OR mtime differs -- restic's if-changed
+      # is that heuristic, not a content comparison, so an edit that preserves
+      # both would be skipped. Keeps files the snapshot does not have.
+      # This PERMANENTLY REPLACES work created since the
       # snapshot -- it does not delete files, but it does destroy edits. The
       # pre-restore snapshot below is the only way back.
       OVERWRITE="if-changed"; DELETE=false; NEEDS_CONFIRM=false ;;
