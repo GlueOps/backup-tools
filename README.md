@@ -47,6 +47,10 @@ export RESTIC_REPOSITORY="..."      # see the backend table below
 export RESTIC_PASSWORD="XXXXXXXX"   # ESCROW THIS OUT OF BAND -- see the warning below
 ```
 
+`RESTIC_REPOSITORY_FILE` and `RESTIC_PASSWORD_FILE` / `RESTIC_PASSWORD_COMMAND`
+are supported as alternatives, which is often cleaner in Kubernetes where the
+value is already a mounted file.
+
 ## Backends
 
 Set `RESTIC_REPOSITORY` to the URL for your target and provide its credentials.
@@ -69,6 +73,13 @@ installed in this image.
 
 Missing credentials are caught **before** restic runs, and the error names the
 exact variables for the backend you selected.
+
+Static keys are not the only option. For S3, IRSA (`AWS_ROLE_ARN` +
+`AWS_WEB_IDENTITY_TOKEN_FILE`), ECS task roles
+(`AWS_CONTAINER_CREDENTIALS_*`), `AWS_PROFILE` and `AWS_SHARED_CREDENTIALS_FILE`
+are all accepted. Auth that sets **no** environment variables — EC2 instance
+profiles, GKE workload identity, Azure managed identity — cannot be detected
+from here, so use `RESTIC_SKIP_CREDENTIAL_CHECK=true` for those.
 
 ### SFTP specifics
 
@@ -127,6 +138,7 @@ hardcoded in the scripts:
 | `RESTIC_EXTRA_OPTS` | unset | both | Space-separated `-o` options for backend tuning. |
 | `RESTIC_SSH_KEY` | unset | sftp | Path to a mounted SSH private key. |
 | `RESTIC_SSH_KNOWN_HOSTS` | unset | sftp | Path to a mounted `known_hosts`. Required — host keys are always verified. |
+| `RESTIC_SKIP_CREDENTIAL_CHECK` | `false` | both | Skip credential validation. Needed only for auth that sets no variables at all — EC2 instance profiles, GKE workload identity, Azure managed identity. |
 
 > **If `RESTIC_PASSWORD` is lost the repository is mathematically unrecoverable.**
 > Do not store it only in the Vault whose backups you would need it to restore.
