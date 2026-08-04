@@ -29,7 +29,7 @@ fails_with() {
 }
 
 echo "=== 1. missing repository / password are caught before anything else ==="
-fails_with "no RESTIC_REPOSITORY"  "RESTIC_REPOSITORY is not set"  RESTIC_PASSWORD=t
+fails_with "no repository location at all" "no repository location"  RESTIC_PASSWORD=t
 fails_with "no password"           "no repository password"        RESTIC_REPOSITORY=/tmp/r
 
 echo "=== 2. each backend demands its own credentials, by name ==="
@@ -82,6 +82,41 @@ echo "=== 8. credentials embedded in a repo URL are redacted in logs ==="
 run RESTIC_REPOSITORY="rest:https://user:hunter2@example.com:8000/" RESTIC_PASSWORD=t
 if grep -q "hunter2" <<<"$LAST_OUT"; then bad "PASSWORD LEAKED into the log"
 else ok "URL password redacted"; fi
+
+echo "=== 8b. RESTIC_REPOSITORY_FILE is honoured (restic supports it) ==="
+echo "/tmp/viafile" > /tmp/repofile
+mkdir -p /data/foobar/x /data/.backup-canary; echo a > /data/foobar/x/f
+rm -rf /canary; ln -s /data/.backup-canary /canary
+if env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root TMPDIR=/tmp \
+     RESTIC_REPOSITORY_FILE=/tmp/repofile RESTIC_PASSWORD=t ALLOW_REPO_INIT=true \
+     /usr/bin/backup-nfs backup >/tmp/rf.log 2>&1; then
+  ok "backup works with only RESTIC_REPOSITORY_FILE set"
+else bad "RESTIC_REPOSITORY_FILE rejected"; tail -3 /tmp/rf.log; fi
+[ -f /tmp/viafile/config ] && ok "repo created at the path named in the file" || bad "no repo at the file's path"
+
+echo "=== 8c. keyless S3 auth is not blocked (IRSA / ECS / profile / metadata) ==="
+for c in "AWS_ROLE_ARN=arn:x AWS_WEB_IDENTITY_TOKEN_FILE=/t" "AWS_PROFILE=prod" \
+         "AWS_SHARED_CREDENTIALS_FILE=/c" "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI=/v2/x" \
+         "RESTIC_SKIP_CREDENTIAL_CHECK=true"; do
+  out=$(env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root TMPDIR=/tmp RESTIC_PASSWORD=t \
+        RESTIC_REPOSITORY="s3:https://s3.amazonaws.com/b" $c timeout 15 \
+        /usr/bin/backup-nfs backup 2>&1)
+  grep -q "none of these are set" <<<"$out" && bad "blocked legitimate auth: $c" \
+    || ok "accepted: ${c%% *}"
+done
+# ...but genuine misconfiguration must still fail
+fails_with "still rejects S3 with no credentials at all" "AWS_ACCESS_KEY_ID" \
+  RESTIC_REPOSITORY="s3:https://s3.amazonaws.com/b" RESTIC_PASSWORD=t
+fails_with "key id without its secret still rejected" "AWS_SECRET_ACCESS_KEY" \
+  RESTIC_REPOSITORY="s3:https://s3.amazonaws.com/b" RESTIC_PASSWORD=t AWS_ACCESS_KEY_ID=x
+
+echo "=== 8d. redaction survives a password containing '@' ==="
+. /usr/lib/backup-tools/restic-common.sh
+RESTIC_REPOSITORY="rest:https://u:p@ss/w@rd@h/" red="$(redact_repo)"
+grep -q "w@rd" <<<"$red" && bad "PASSWORD TAIL LEAKED: $red" || ok "fully redacted: $red"
+RESTIC_REPOSITORY="s3:https://ep/bucket/my@dir" red="$(redact_repo)"
+[ "$red" = "s3:https://ep/bucket/my@dir" ] && ok "plain path containing '@' left intact" \
+  || bad "over-redacted a credential-free URL: $red"
 
 echo "=== 9. sftp: missing key material fails with actionable guidance ==="
 fails_with "sftp without RESTIC_SSH_KEY" "RESTIC_SSH_KEY" \

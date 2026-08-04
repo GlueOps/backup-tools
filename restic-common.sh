@@ -17,11 +17,23 @@ die() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] FATAL: $*" >&2; exit "${2:-1}"; }
 # restic_setup(). Includes --retry-lock and any -o backend tuning.
 ROPTS=()
 
+# --------------------------------------------------------- repo location ----
+# restic accepts the location from EITHER RESTIC_REPOSITORY or
+# RESTIC_REPOSITORY_FILE. Resolve whichever is in play for our own detection and
+# logging; restic still reads the environment itself, so neither is overwritten.
+resolved_repo() {
+  if [ -n "${RESTIC_REPOSITORY:-}" ]; then
+    printf '%s' "$RESTIC_REPOSITORY"
+  elif [ -n "${RESTIC_REPOSITORY_FILE:-}" ] && [ -r "${RESTIC_REPOSITORY_FILE}" ]; then
+    head -n1 "$RESTIC_REPOSITORY_FILE"
+  fi
+}
+
 # ------------------------------------------------------------ backend id ----
-# Echo a short backend name derived from the RESTIC_REPOSITORY URL scheme.
+# Echo a short backend name derived from the repository URL scheme.
 # Mirrors restic's own dispatch (see its "Preparing a new repository" docs).
 backend_of() {
-  local r="${RESTIC_REPOSITORY:-}"
+  local r; r="$(resolved_repo)"
   case "$r" in
     s3:*)     echo s3     ;;
     b2:*)     echo b2     ;;
@@ -125,19 +137,44 @@ prepare_backend_files() {
 preflight() {
   local backend; backend="$(backend_of)"
 
-  [ -n "${RESTIC_REPOSITORY:-}" ] \
-    || die "RESTIC_REPOSITORY is not set. It selects both the location AND the
-       backend; see the NFS section of README.md for the format per backend."
+  [ -n "$(resolved_repo)" ] \
+    || die "no repository location: set RESTIC_REPOSITORY, or RESTIC_REPOSITORY_FILE
+       pointing at a readable file containing it. It selects both the location
+       AND the backend; see the NFS section of README.md for the format."
 
   [ -n "${RESTIC_PASSWORD:-}${RESTIC_PASSWORD_FILE:-}${RESTIC_PASSWORD_COMMAND:-}" ] \
     || die "no repository password: set RESTIC_PASSWORD, RESTIC_PASSWORD_FILE or
        RESTIC_PASSWORD_COMMAND. Without it restic cannot read or write anything."
 
+  # Cloud backends can authenticate with NO environment variables at all -- EC2
+  # instance profiles, GCE/GKE workload identity and Azure managed identity are
+  # fetched from a metadata endpoint at runtime and are undetectable from here.
+  # Requiring keys would block them outright, so this opts out of the credential
+  # checks below. The repository/password checks above still apply.
+  if [ "${RESTIC_SKIP_CREDENTIAL_CHECK:-false}" = "true" ]; then
+    log "RESTIC_SKIP_CREDENTIAL_CHECK=true -- not validating ${backend} credentials"
+    prepare_backend_files "$backend"
+    log "backend=${backend} repository=$(redact_repo)"
+    return 0
+  fi
+
   case "$backend" in
     s3)
-      _need_any s3 "S3-compatible targets (AWS, Hetzner Object Storage, Cloudflare R2, Backblaze B2's S3 API, MinIO, Wasabi) all use the AWS_* names." \
-        AWS_ACCESS_KEY_ID
-      _need_any s3 "" AWS_SECRET_ACCESS_KEY
+      # Static keys are only ONE of restic's S3 auth paths. IRSA (EKS), ECS task
+      # roles and shared-credential files are all valid and use different
+      # variables entirely.
+      _need_any s3 "S3-compatible targets (AWS, Hetzner Object Storage, Cloudflare R2, Backblaze B2's S3 API, MinIO, Wasabi) all use the AWS_* names.
+       For instance-profile or metadata-based auth, which sets no variables at
+       all, use RESTIC_SKIP_CREDENTIAL_CHECK=true." \
+        AWS_ACCESS_KEY_ID AWS_ROLE_ARN AWS_WEB_IDENTITY_TOKEN_FILE \
+        AWS_SHARED_CREDENTIALS_FILE AWS_PROFILE \
+        AWS_CONTAINER_CREDENTIALS_RELATIVE_URI AWS_CONTAINER_CREDENTIALS_FULL_URI
+      # Only demand the secret when a static key id was supplied -- the other
+      # mechanisms have no secret to pair with it.
+      if [ -n "${AWS_ACCESS_KEY_ID:-}" ]; then
+        _need_any s3 "AWS_ACCESS_KEY_ID is set, so its secret is required too." \
+          AWS_SECRET_ACCESS_KEY
+      fi
       ;;
     b2)
       _need_any b2 "This is B2's NATIVE backend. To use B2 via its S3 API instead, use an s3: URL and AWS_* credentials." \
@@ -146,12 +183,16 @@ preflight() {
       ;;
     azure)
       _need_any azure "" AZURE_ACCOUNT_NAME
-      _need_any azure "Provide either an account key or a SAS token." \
-        AZURE_ACCOUNT_KEY AZURE_ACCOUNT_SAS
+      _need_any azure "Provide an account key, a SAS token, or set
+       AZURE_FORCE_CLI_CREDENTIAL=true. For managed identity, use
+       RESTIC_SKIP_CREDENTIAL_CHECK=true." \
+        AZURE_ACCOUNT_KEY AZURE_ACCOUNT_SAS AZURE_FORCE_CLI_CREDENTIAL
       ;;
     gs)
       _need_any gs "" GOOGLE_PROJECT_ID
-      _need_any gs "GOOGLE_APPLICATION_CREDENTIALS is a PATH to a mounted JSON key file, not the JSON itself." \
+      _need_any gs "GOOGLE_APPLICATION_CREDENTIALS is a PATH to a mounted JSON key
+       file, not the JSON itself. For GKE workload identity, which sets neither
+       variable, use RESTIC_SKIP_CREDENTIAL_CHECK=true." \
         GOOGLE_APPLICATION_CREDENTIALS GOOGLE_ACCESS_TOKEN
       ;;
     swift)
@@ -178,8 +219,14 @@ preflight() {
 
 # Repository URLs can embed credentials (rest:https://user:pass@host). Never log
 # them verbatim.
+#
+# Matches greedily to the LAST '@'. An earlier non-greedy form stopped at the
+# first '@', so a password CONTAINING '@' -- common, and only percent-encoded by
+# the well-behaved -- had its tail printed in cleartext. Requiring a ':' before
+# the '@' keeps a plain path containing '@' (s3:https://ep/bucket/my@dir) from
+# being needlessly mangled.
 redact_repo() {
-  echo "${RESTIC_REPOSITORY:-}" | sed -E 's#(//[^:/@]+):[^@]*@#\1:***@#'
+  resolved_repo | sed -E 's#(://)[^/@]*:[^ ]*@#\1***:***@#'
 }
 
 # ----------------------------------------------------------- global opts ----
