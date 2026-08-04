@@ -9,11 +9,13 @@ ARG VERSION_GH_CLI=2.93.0
 ARG VERSION_OPENBAO=2.5.4
 # renovate: datasource=github-tags depName=grafana/loki
 ARG VERSION_LOKI=3.7.2
+# renovate: datasource=github-releases depName=restic/restic
+ARG VERSION_RESTIC=0.19.1
 
 # Update the system and install required packages
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install -y curl unzip groff-base less gnupg2 git jq tmux && \
+    apt-get install -y curl unzip bzip2 groff-base less gnupg2 git jq tmux && \
     rm -rf /var/lib/apt/lists/*
 
 # Install loki's logcli
@@ -44,12 +46,23 @@ RUN curl --proto =https -LO https://github.com/cli/cli/releases/download/v${VERS
     dpkg -i gh_${VERSION_GH_CLI}_linux_amd64.deb && \
     rm gh_${VERSION_GH_CLI}_linux_amd64.deb
 
+# Install restic (single static binary, shipped bzip2-compressed)
+RUN curl --proto =https -fsSL -o /tmp/restic.bz2 \
+      "https://github.com/restic/restic/releases/download/v${VERSION_RESTIC}/restic_${VERSION_RESTIC}_linux_amd64.bz2" && \
+    bunzip2 -c /tmp/restic.bz2 > /usr/local/bin/restic && \
+    chmod 0755 /usr/local/bin/restic && \
+    rm -f /tmp/restic.bz2 && \
+    restic version
+
 # Set working directory in the container
 RUN mkdir /app
 
 ADD github-backup.sh /usr/bin/backup-github
 ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
+ADD nfs-backup.sh /usr/bin/backup-nfs
+ADD nfs-restore.sh /usr/bin/restore-nfs
+RUN chmod 0755 /usr/bin/backup-nfs /usr/bin/restore-nfs
 
 ENV CACHED_VERSION_OPENBAO=${VERSION_OPENBAO}
 
