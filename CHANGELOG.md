@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.17.0](https://github.com/GlueOps/backup-tools/compare/v2.16.0...v2.17.0) (2026-08-04)
+
+
+### Features
+
+* validate and support all restic backends, not just S3 ([#264](https://github.com/GlueOps/backup-tools/issues/264)) ([7ef4dd1](https://github.com/GlueOps/backup-tools/commit/7ef4dd17cd1ef0946b3eaed43e24b74a69507b18))
+
+
+### Bug Fixes
+
+* preflight rejected valid configurations and leaked passwords ([#265](https://github.com/GlueOps/backup-tools/issues/265)) ([d1606ca](https://github.com/GlueOps/backup-tools/commit/d1606ca00519917db6cb5f2206b82c8e79a4e616))
+* restore resolved 'latest' to its own pre-restore snapshot ([#266](https://github.com/GlueOps/backup-tools/issues/266)) ([ad74540](https://github.com/GlueOps/backup-tools/commit/ad74540409412f555c93f2640b39f8be6a6e8749))
+
+
+### Miscellaneous Chores
+
+* **fallback:** update actions/checkout ([#262](https://github.com/GlueOps/backup-tools/issues/262)) ([9b18041](https://github.com/GlueOps/backup-tools/commit/9b1804102329fa41cde8e6ea266c0e96ff3d9da5))
+
 ## [2.16.0](https://github.com/GlueOps/backup-tools/compare/v2.15.0...v2.16.0) (2026-08-04)
 
 
