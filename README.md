@@ -31,6 +31,77 @@ docker build . -t backup && docker run -it backup
 backup-github
 ```
 
+# NFS backups
+
+Full-fidelity [restic](https://restic.net/) backup of an NFS export mounted at
+`/data`, plus a restore path. The export is expected to be laid out as
+`/data/<group>/<subject>/`, where `<group>` is a cohort/tenant directory and
+`<subject>` is the unit you would restore individually.
+
+Unlike the other jobs in this image, this one does **not** use `S3_BUCKET_NAME` —
+restic addresses its own repository:
+
+```bash
+export RESTIC_REPOSITORY="s3:https://s3.<region>.example.com/<bucket>/<prefix>"
+export RESTIC_PASSWORD="XXXXXXXX"   # ESCROW THIS OUT OF BAND -- see the warning below
+export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXX
+export AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXX
+export AWS_DEFAULT_REGION=<region>
+```
+
+Deployment-specific values — set these per environment, they are **not**
+hardcoded in the scripts:
+
+| Variable | Default | Used by | Meaning |
+|---|---|---|---|
+| `BACKUP_HOST` | `foobar` | both | The `--host` label restic stamps on snapshots and filters by. Not a hostname that gets resolved or connected to. **Must be identical for backup and restore**, or the restore's filter matches nothing. |
+| `RESTORE_TERM` | `foobar` | `restore-nfs` | The `<group>` directory under `/data`. |
+| `RESTIC_KEEP_TAGS` | unset | `backup-nfs prune` | Comma-separated tags pinned against pruning. |
+| `HEARTBEAT_URL` | unset | `backup-nfs backup` | External dead-man's switch, pinged on success. |
+
+> **If `RESTIC_PASSWORD` is lost the repository is mathematically unrecoverable.**
+> Do not store it only in the Vault whose backups you would need it to restore.
+
+## Backup
+
+```bash
+backup-nfs backup    # full backup of /data -- no excludes, full metadata
+backup-nfs prune     # apply retention, then reclaim space (needs delete-capable creds)
+backup-nfs verify    # restic check + restore the canary and assert it is fresh
+```
+
+`backup` requires uid 0 and an export configured with `no_root_squash`. Without
+it, files that are not world-readable are silently skipped and restores cannot
+set ownership; the script treats restic's exit 3 as a hard failure so this fails
+loudly rather than shipping an unusable backup.
+
+`prune` retention: `--keep-last 7 --keep-daily 14 --keep-weekly 8
+--keep-monthly 24 --keep-yearly 10`, plus any tags named in `RESTIC_KEEP_TAGS`
+(comma-separated) which are pinned permanently.
+
+## Restore
+
+```bash
+export BACKUP_HOST=foobar RESTORE_TERM=foobar
+
+# one directory under /data/<group>/<subject>
+RESTORE_MODE=list      RESTORE_STUDENT=foo                          restore-nfs student
+RESTORE_MODE=additive  RESTORE_STUDENT=foo RESTORE_SNAPSHOT_ID=abc  restore-nfs student
+
+# the whole export
+RESTORE_MODE=verify RESTORE_SNAPSHOT_ID=abc  restore-nfs full
+```
+
+| Subcommand | Modes | Default writes anything? |
+|---|---|---|
+| `student` | `list`, `additive`, `overwrite`, `exact` | No — `list` |
+| `full` | `verify`, `stage`, `commit` | No — `verify` |
+
+`additive` only creates files that do not already exist, so it cannot destroy
+anything. `overwrite` and `exact` take a durable pre-restore restic snapshot
+first. `exact` and `commit` additionally require `RESTORE_CONFIRM` set to a token
+bound to the resolved snapshot id — the script prints the expected value.
+
 # Google Drive Shared Drive Backups
 
 ## note this only works for shared team drives. we do not have anything to backup personal drives
