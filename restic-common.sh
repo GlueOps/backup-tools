@@ -108,13 +108,18 @@ prepare_backend_files() {
        RESTIC_EXTRA_OPTS and manage the connection yourself."
 
     local kh="${RESTIC_SSH_KNOWN_HOSTS:-}"
-    [ -n "$kh" ] && [ -r "$kh" ] || die "the sftp backend needs RESTIC_SSH_KNOWN_HOSTS
+    # Written as an explicit `if` rather than `A && B || C`: that form reads as
+    # if-then-else but is not one, and shellcheck flags it (SC2015). The logic
+    # here happened to be correct; spelling it out keeps it that way.
+    if [ -z "$kh" ] || [ ! -r "$kh" ]; then
+      die "the sftp backend needs RESTIC_SSH_KNOWN_HOSTS
        pointing at a readable known_hosts file, so the server's host key is
        PINNED. Generate it once with:
          ssh-keyscan -t ed25519 <host> > known_hosts
        and store it alongside the key. This is deliberately required: disabling
        host-key checking would let anything that can spoof DNS or occupy the
        route receive your backups."
+    fi
     cp "$kh" "$d/known_hosts" && chmod 644 "$d/known_hosts"
 
     # Passed through to ssh by restic. BatchMode makes a missing/rejected key
