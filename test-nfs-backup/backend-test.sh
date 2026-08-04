@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# Backend selection, preflight validation and repo-init gating.
+#
+# Complements e2e-test.sh (which exercises backup/restore behaviour against a
+# local repository). This file is about everything that happens BEFORE restic
+# touches data: is the backend understood, are its credentials present, and can
+# a typo silently create a new empty repository.
+set -uo pipefail
+
+PASS=0; FAIL=0
+ok()  { echo "  PASS: $1"; PASS=$((PASS+1)); }
+bad() { echo "  FAIL: $1"; FAIL=$((FAIL+1)); }
+
+# Run backup-nfs in a clean env with only the given assignments, capture output.
+run() {
+  local out rc
+  # timeout: some of these repos are unreachable by design, and restic would
+  # otherwise sit in connect() until the suite looks hung.
+  out="$(timeout 20 env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root TMPDIR=/tmp "$@" \
+        /usr/bin/backup-nfs backup 2>&1)"; rc=$?
+  LAST_OUT="$out"; return $rc
+}
+# Assert the run failed AND the message mentions the expected text.
+fails_with() {
+  local label="$1" want="$2"; shift 2
+  run "$@" && { bad "$label -- command SUCCEEDED, expected failure"; return; }
+  if grep -qF "$want" <<<"$LAST_OUT"; then ok "$label"
+  else bad "$label -- wrong message. got: $(head -2 <<<"$LAST_OUT" | tr '\n' ' ')"; fi
+}
+
+echo "=== 1. missing repository / password are caught before anything else ==="
+fails_with "no RESTIC_REPOSITORY"  "RESTIC_REPOSITORY is not set"  RESTIC_PASSWORD=t
+fails_with "no password"           "no repository password"        RESTIC_REPOSITORY=/tmp/r
+
+echo "=== 2. each backend demands its own credentials, by name ==="
+fails_with "s3 without keys"    "AWS_ACCESS_KEY_ID"   RESTIC_REPOSITORY="s3:https://e.example.com/b" RESTIC_PASSWORD=t
+fails_with "s3 without secret"  "AWS_SECRET_ACCESS_KEY" RESTIC_REPOSITORY="s3:https://e.example.com/b" RESTIC_PASSWORD=t AWS_ACCESS_KEY_ID=x
+fails_with "b2 without keys"    "B2_ACCOUNT_ID"       RESTIC_REPOSITORY="b2:bucket:/p" RESTIC_PASSWORD=t
+fails_with "azure without keys" "AZURE_ACCOUNT_NAME"  RESTIC_REPOSITORY="azure:c:/"    RESTIC_PASSWORD=t
+fails_with "gs without project" "GOOGLE_PROJECT_ID"   RESTIC_REPOSITORY="gs:b:/"       RESTIC_PASSWORD=t
+fails_with "swift without auth" "OS_AUTH_URL"         RESTIC_REPOSITORY="swift:c:/"    RESTIC_PASSWORD=t
+
+echo "=== 3. b2 error distinguishes native backend from the S3 API ==="
+run RESTIC_REPOSITORY="b2:bucket:/p" RESTIC_PASSWORD=t
+grep -q "S3 API" <<<"$LAST_OUT" && ok "b2 message points at the s3: alternative" \
+  || bad "b2 message does not mention the S3 API route"
+
+echo "=== 4. rclone is named as unsupported rather than failing obscurely ==="
+fails_with "rclone not in image" "rclone is not installed" RESTIC_REPOSITORY="rclone:rem:/p" RESTIC_PASSWORD=t
+
+echo "=== 5. auto-init is gated (the silent-new-repo failure mode) ==="
+rm -rf /tmp/gated
+fails_with "refuses to create a repo by default" "ALLOW_REPO_INIT=true" \
+  RESTIC_REPOSITORY=/tmp/gated RESTIC_PASSWORD=t
+[ ! -e /tmp/gated/config ] && ok "no repository was created" || bad "a repository WAS created despite the gate"
+
+mkdir -p /data/foobar/x /canary && echo a > /data/foobar/x/f
+rm -rf /data/.backup-canary && mkdir -p /data/.backup-canary
+rm -rf /canary && ln -s /data/.backup-canary /canary
+if env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root TMPDIR=/tmp \
+     RESTIC_REPOSITORY=/tmp/gated RESTIC_PASSWORD=t ALLOW_REPO_INIT=true \
+     /usr/bin/backup-nfs backup >/tmp/init.log 2>&1; then
+  ok "ALLOW_REPO_INIT=true creates it and the backup succeeds"
+else
+  bad "ALLOW_REPO_INIT=true still failed"; tail -5 /tmp/init.log
+fi
+[ -f /tmp/gated/config ] && ok "repository exists afterwards" || bad "no repository created"
+
+echo "=== 6. a typo'd repo path is refused, not silently re-created ==="
+fails_with "typo'd repository refused" "Refusing to auto-create" \
+  RESTIC_REPOSITORY=/tmp/gatedd RESTIC_PASSWORD=t
+
+echo "=== 7. restore never auto-creates a repository, even if told to ==="
+out=$(env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root TMPDIR=/tmp \
+  RESTIC_REPOSITORY=/tmp/never RESTIC_PASSWORD=t ALLOW_REPO_INIT=true \
+  RESTORE_MODE=list /usr/bin/restore-nfs student 2>&1)
+[ $? -ne 0 ] && [ ! -e /tmp/never/config ] \
+  && ok "restore refused to init even with ALLOW_REPO_INIT=true" \
+  || bad "restore created a repository -- it must never do that"
+
+echo "=== 8. credentials embedded in a repo URL are redacted in logs ==="
+run RESTIC_REPOSITORY="rest:https://user:hunter2@example.com:8000/" RESTIC_PASSWORD=t
+if grep -q "hunter2" <<<"$LAST_OUT"; then bad "PASSWORD LEAKED into the log"
+else ok "URL password redacted"; fi
+
+echo "=== 9. sftp: missing key material fails with actionable guidance ==="
+fails_with "sftp without RESTIC_SSH_KEY" "RESTIC_SSH_KEY" \
+  RESTIC_REPOSITORY="sftp:h:/p" RESTIC_PASSWORD=t
+ssh-keygen -qt ed25519 -N "" -f /tmp/testkey
+fails_with "sftp without known_hosts" "RESTIC_SSH_KNOWN_HOSTS" \
+  RESTIC_REPOSITORY="sftp:h:/p" RESTIC_PASSWORD=t RESTIC_SSH_KEY=/tmp/testkey
+fails_with "sftp refuses host-key bypass by omission" "ssh-keyscan" \
+  RESTIC_REPOSITORY="sftp:h:/p" RESTIC_PASSWORD=t RESTIC_SSH_KEY=/tmp/testkey
+
+echo "=== 9b. default sftp path injects pinned-host-key args ==="
+ssh-keygen -qt ed25519 -N "" -f /tmp/k2 2>/dev/null
+echo "h ssh-ed25519 AAAA" > /tmp/kh2
+run RESTIC_REPOSITORY="sftp:nonexistent.invalid:/p" RESTIC_PASSWORD=t \
+    RESTIC_SSH_KEY=/tmp/k2 RESTIC_SSH_KNOWN_HOSTS=/tmp/kh2
+grep -q "using key /tmp/k2 with pinned host keys" <<<"$LAST_OUT" \
+  && ok "injected sftp.args with pinned known_hosts" || bad "did not take the default sftp path"
+grep -qi "StrictHostKeyChecking=no" <<<"$LAST_OUT" && bad "host-key checking was disabled" \
+  || ok "never disables host-key checking"
+
+echo "=== 10. sftp: real backup+restore round trip over the SFTP backend ==="
+# sftp.command points restic at a local sftp-server, so this exercises the real
+# SFTP code path with no network. It also exercises RESTIC_EXTRA_OPTS.
+# A literal line, not ssh-keyscan: this must not depend on network access.
+echo "localhost ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleHostKeyForTestsOnly00000000000" > /tmp/known_hosts
+mkdir -p /srv/sftprepo
+export RESTIC_REPOSITORY="sftp:localhost:/srv/sftprepo" RESTIC_PASSWORD=t
+export RESTIC_SSH_KEY=/tmp/testkey RESTIC_SSH_KNOWN_HOSTS=/tmp/known_hosts
+export RESTIC_EXTRA_OPTS="sftp.command=/usr/lib/openssh/sftp-server sftp.connections=3"
+export ALLOW_REPO_INIT=true BACKUP_HOST=sftp-test
+if backup-nfs backup >/tmp/sftp.log 2>&1; then ok "backup over sftp succeeded"
+else bad "backup over sftp failed"; tail -8 /tmp/sftp.log; fi
+grep -q "backend=sftp" /tmp/sftp.log && ok "detected backend=sftp" || bad "backend not reported as sftp"
+grep -q "connection managed via RESTIC_EXTRA_OPTS" /tmp/sftp.log \
+  && ok "deferred to user-supplied sftp.command (restic rejects args+command)" \
+  || bad "did not defer to user-supplied sftp.command"
+[ -f /srv/sftprepo/config ] && ok "repo written to the sftp path" || bad "nothing at the sftp path"
+
+RESTORE_MODE=list RESTORE_TERM=foobar RESTORE_STUDENT=x restore-nfs student >/tmp/sftpls.log 2>&1 \
+  && ok "restore list over sftp succeeded" || { bad "restore over sftp failed"; tail -5 /tmp/sftpls.log; }
+
+echo "=== 11. sftp as a non-root uid (restore-student runs as 1337) ==="
+# Models production: the repo is owned by the uid that connects, exactly as a
+# Storage Box repo is owned by the Storage Box user. A root-owned local repo
+# would NOT be readable -- restic creates config as mode 400 -- but that is an
+# artifact of both ends sharing a filesystem here, not a real-world case.
+chmod 644 /tmp/testkey     # deliberately too-open, as a Secret mount would be
+install -d -o 1337 -g 1337 /tmp/u1337 /srv/repo1337
+# sftp-server refuses a uid with no passwd entry; a real server always has one.
+getent passwd 1337 >/dev/null || useradd -u 1337 -M -d /tmp/u1337 -s /bin/bash tester1337
+
+as1337() {
+  setpriv --reuid=1337 --regid=1337 --clear-groups \
+    env PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp/u1337 TMPDIR=/tmp/u1337 \
+    RESTIC_REPOSITORY="sftp:localhost:/srv/repo1337" RESTIC_PASSWORD=t \
+    RESTIC_SSH_KEY=/tmp/testkey RESTIC_SSH_KNOWN_HOSTS=/tmp/known_hosts \
+    RESTIC_EXTRA_OPTS="sftp.command=/usr/lib/openssh/sftp-server" \
+    BACKUP_HOST=sftp-test "$@"
+}
+# Harness setup, not an assertion: seed a repo owned by uid 1337.
+as1337 restic -o sftp.command=/usr/lib/openssh/sftp-server init >/dev/null 2>&1
+
+# `restore-nfs student` is the command that actually runs as 1337 in production.
+# (`backup-nfs backup` correctly refuses any uid but 0 -- it must read files that
+# are not world-readable -- so it is the wrong command to assert this with.)
+if as1337 RESTORE_MODE=list RESTORE_TERM=foobar RESTORE_STUDENT=x \
+     /usr/bin/restore-nfs student >/tmp/uid.log 2>&1; then
+  ok "uid 1337 reached the sftp backend using a 0644 root-owned key"
+else
+  bad "uid 1337 sftp access failed"; tail -8 /tmp/uid.log
+fi
+grep -q "backend=sftp" /tmp/uid.log && ok "uid 1337 resolved backend=sftp" || bad "backend not detected as 1337"
+perm=$(stat -c %a /tmp/u1337/.restic-ssh/id 2>/dev/null)
+[ "$perm" = "600" ] && ok "key copied to a private path as mode 600" \
+  || bad "copied key mode is '$perm', expected 600 (ssh would refuse it)"
+[ "$(stat -c %U /tmp/u1337/.restic-ssh/id 2>/dev/null)" != "root" ] \
+  && ok "copy is owned by the running uid, not root" || bad "copy still root-owned"
+
+echo
+echo "================= RESULT: $PASS passed, $FAIL failed ================="
+[ "$FAIL" -eq 0 ]

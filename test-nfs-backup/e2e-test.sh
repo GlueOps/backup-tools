@@ -4,6 +4,7 @@
 set -uo pipefail
 
 export RESTIC_REPOSITORY=/repo
+export ALLOW_REPO_INIT=true   # first run creates the test repo; gated by design
 export RESTIC_PASSWORD=testpassword
 export RESTORE_TERM=testterm
 export BACKUP_HOST=test-host

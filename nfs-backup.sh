@@ -28,31 +28,16 @@
 set -Eeuo pipefail
 
 MODE="${1:-backup}"
+# shellcheck source=restic-common.sh
+. /usr/lib/backup-tools/restic-common.sh
+
 # Snapshot "host" label. Purely an identifier restic stamps on snapshots and
 # filters by -- it is not resolved or connected to. It MUST be identical here
 # and in restore-nfs, or the restore's --host filter finds nothing.
 HOSTTAG="${BACKUP_HOST:-foobar}"
-# Most lock contention resolves itself; this makes `unlock` genuinely rare.
-LOCKOPT="--retry-lock 30m"
-
-log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
-die() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] FATAL: $*" >&2; exit "${2:-1}"; }
-
-# Create the repo on first run. `restic cat config` is the cheapest existence
-# probe that also proves the password is correct.
-if ! restic cat config >/dev/null 2>&1; then
-  log "repository not initialised — running restic init"
-  restic init
-fi
-
-# Clear locks left by a crashed job. NOT the same as `unlock --remove-all`,
-# which would break a concurrently running one. Be aware this is not purely a
-# "stale lock" operation: restic removes ANY lock older than 30 minutes
-# regardless of host or liveness, and only does a same-host process-liveness
-# check below that age. Healthy jobs refresh their lock every 5 minutes, so this
-# is normally safe -- but keep prune, backup and verify on separate schedules.
-# Never fatal: an object-store hiccup here must not fail the run.
-restic unlock || log "WARNING: restic unlock failed; continuing"
+restic_setup
+ensure_repo
+try_unlock
 
 case "$MODE" in
 
@@ -79,11 +64,10 @@ backup)
   fi
 
   rc=0
-  restic backup /data \
+  restic "${ROPTS[@]}" backup /data \
     --host "$HOSTTAG" \
     --tag daily \
     --no-scan \
-    $LOCKOPT \
     --verbose || rc=$?
 
   case "$rc" in
@@ -106,7 +90,7 @@ backup)
   # nothing, and exits 0. Comparing against the previous snapshot turns that
   # silent success into a loud failure at the moment it happens. It also detects
   # a root_squash regression, which shows up as a large drop in visible files.
-  PREV="$(restic snapshots --host "$HOSTTAG" --tag daily --json \
+  PREV="$(restic "${ROPTS[@]}" snapshots --host "$HOSTTAG" --tag daily --json \
           | jq -r 'if length >= 2 then .[-2].id else empty end')" \
     || { log "WARNING: could not list snapshots for the shrink guard; skipping it"; PREV=""; }
   if [ -n "${PREV:-}" ]; then
@@ -114,8 +98,8 @@ backup)
     # the newest snapshot in the whole repo -- including the small,
     # single-student `pre-restore` snapshots that restore-nfs writes under this
     # same host -- which would collapse NEWN and fail a perfectly good backup.
-    NEWN="$(restic stats --json --host "$HOSTTAG" --tag daily latest | jq -r '.total_file_count')"
-    OLDN="$(restic stats --json "$PREV"                              | jq -r '.total_file_count')"
+    NEWN="$(restic "${ROPTS[@]}" stats --json --host "$HOSTTAG" --tag daily latest | jq -r '.total_file_count')"
+    OLDN="$(restic "${ROPTS[@]}" stats --json "$PREV"                              | jq -r '.total_file_count')"
     log "file count: previous=$OLDN current=$NEWN"
     # Guard against a garbage comparison rather than trusting jq's output.
     if ! [[ "$OLDN" =~ ^[0-9]+$ ]] || ! [[ "$NEWN" =~ ^[0-9]+$ ]]; then
@@ -173,13 +157,13 @@ prune)
   # `forget` alone is cheap metadata deletion. `prune` is what reclaims space,
   # costs time, and carries risk — which is why they are never run inside the
   # backup job.
-  restic forget --host "$HOSTTAG" --tag daily $LOCKOPT "${KEEP_ARGS[@]}"
+  restic "${ROPTS[@]}" forget --host "$HOSTTAG" --tag daily "${KEEP_ARGS[@]}"
 
   # --max-unused trades a little wasted space for far less repacking.
   # --max-repack-size bounds runtime so a monthly cliff cannot produce a
   # 12-hour job. NOTE: the FIRST prune after adopting restic 0.19.x repacks more
   # small packs than steady-state — expect one long run.
-  restic prune --max-unused 5% --max-repack-size 100G $LOCKOPT
+  restic "${ROPTS[@]}" prune --max-unused 5% --max-repack-size 100G
 
   log "prune OK"
   ;;
@@ -193,16 +177,15 @@ verify)
   # would otherwise reject as invalid octal and abort under set -e.
   BUCKET=$(( (10#$(date -u +%V) - 1) % 52 + 1 ))
   log "read-data verification bucket ${BUCKET}/52 (rotates weekly)"
-  restic check --read-data-subset="${BUCKET}/52" $LOCKOPT
+  restic "${ROPTS[@]}" check --read-data-subset="${BUCKET}/52"
 
   # Structural integrity is not restorability. Restore the canary and confirm it
   # is FRESH — this proves the whole path works end to end.
   rm -rf /verify/*
-  restic restore latest \
+  restic "${ROPTS[@]}" restore latest \
     --host "$HOSTTAG" --tag daily \
     --target /verify \
-    --include /data/.backup-canary/heartbeat \
-    $LOCKOPT
+    --include /data/.backup-canary/heartbeat
 
   HB="/verify/data/.backup-canary/heartbeat"
   [ -f "$HB" ] || die "canary heartbeat not present in the latest snapshot.

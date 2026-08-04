@@ -38,16 +38,81 @@ Full-fidelity [restic](https://restic.net/) backup of an NFS export mounted at
 `/data/<group>/<subject>/`, where `<group>` is a cohort/tenant directory and
 `<subject>` is the unit you would restore individually.
 
-Unlike the other jobs in this image, this one does **not** use `S3_BUCKET_NAME` —
-restic addresses its own repository:
+Unlike the other jobs in this image, this one does **not** use `S3_BUCKET_NAME`.
+restic addresses its own repository, and **the URL scheme selects the backend** —
+these scripts are not S3-specific:
 
 ```bash
-export RESTIC_REPOSITORY="s3:https://s3.<region>.example.com/<bucket>/<prefix>"
+export RESTIC_REPOSITORY="..."      # see the backend table below
 export RESTIC_PASSWORD="XXXXXXXX"   # ESCROW THIS OUT OF BAND -- see the warning below
-export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXX
-export AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXX
-export AWS_DEFAULT_REGION=<region>
 ```
+
+## Backends
+
+Set `RESTIC_REPOSITORY` to the URL for your target and provide its credentials.
+Everything is read from the environment, so in Kubernetes these are simply keys
+in the secret projected via `envFrom` — no values-file change per backend.
+
+| Backend | `RESTIC_REPOSITORY` | Credentials |
+|---|---|---|
+| **S3-compatible** — AWS, Hetzner Object Storage, Cloudflare R2, Backblaze B2 (S3 API), MinIO, Wasabi | `s3:https://<endpoint>/<bucket>/<prefix>` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optionally `AWS_DEFAULT_REGION` |
+| **SFTP** — incl. Hetzner Storage Box | `sftp:<user>@<host>:/<path>` | `RESTIC_SSH_KEY`, `RESTIC_SSH_KNOWN_HOSTS` (both file paths — see below) |
+| **Backblaze B2** (native) | `b2:<bucket>:<path>` | `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY` |
+| **Azure Blob** | `azure:<container>:/` | `AZURE_ACCOUNT_NAME` + `AZURE_ACCOUNT_KEY` or `AZURE_ACCOUNT_SAS` |
+| **Google Cloud Storage** | `gs:<bucket>:/` | `GOOGLE_PROJECT_ID` + `GOOGLE_APPLICATION_CREDENTIALS` (path to a mounted JSON key) or `GOOGLE_ACCESS_TOKEN` |
+| **OpenStack Swift** | `swift:<container>:/<path>` | `OS_AUTH_URL`, `OS_USERNAME`, `OS_PASSWORD`, … (v1: `ST_AUTH`, `ST_USER`, `ST_KEY`) |
+| **REST server** | `rest:https://<host>:8000/` | `RESTIC_REST_USERNAME`, `RESTIC_REST_PASSWORD` |
+| **Local path / mounted volume** | `/mnt/backup` | none |
+
+`rclone:` URLs are detected and rejected with a clear message — rclone is not
+installed in this image.
+
+Missing credentials are caught **before** restic runs, and the error names the
+exact variables for the backend you selected.
+
+### SFTP specifics
+
+`RESTIC_SSH_KEY` and `RESTIC_SSH_KNOWN_HOSTS` are **paths to mounted files**, not
+values — `envFrom` cannot deliver files, so mount the secret as a volume.
+
+The key is copied to a private location and `chmod 600` at startup. This is not
+cosmetic: ssh refuses a private key that is group- or world-readable, Kubernetes
+mounts secrets read-only owned by root, and the restore job runs as a non-root
+uid — so the key cannot be used in place.
+
+Host keys must be **pinned**; there is no option to skip verification. Generate
+the file once:
+
+```bash
+ssh-keyscan -t ed25519 <host> > known_hosts
+```
+
+To manage the connection yourself (jump host, custom ssh wrapper), set
+`sftp.command` or `sftp.args` via `RESTIC_EXTRA_OPTS` — the built-in arguments
+are then not injected, because restic rejects `sftp.command` and `sftp.args`
+together.
+
+### Tuning
+
+`RESTIC_EXTRA_OPTS` is passed through as `-o` options, space separated:
+
+```bash
+export RESTIC_EXTRA_OPTS="s3.connections=10 sftp.connections=8"
+```
+
+### Creating the repository
+
+Auto-init is **gated**. On first run only:
+
+```bash
+export ALLOW_REPO_INIT=true
+```
+
+then remove it. `restic cat config` fails identically whether the repository is
+missing, the password is wrong, or the backend is unreachable — so without this
+gate a typo in `RESTIC_REPOSITORY` would silently create a *new empty repository*,
+back up into it, and report success. The shrink guard cannot catch that either,
+because it sees "no previous snapshot — first run".
 
 Deployment-specific values — set these per environment, they are **not**
 hardcoded in the scripts:
@@ -58,6 +123,10 @@ hardcoded in the scripts:
 | `RESTORE_TERM` | `foobar` | `restore-nfs` | The `<group>` directory under `/data`. |
 | `RESTIC_KEEP_TAGS` | unset | `backup-nfs prune` | Comma-separated tags pinned against pruning. |
 | `HEARTBEAT_URL` | unset | `backup-nfs backup` | External dead-man's switch, pinged on success. |
+| `ALLOW_REPO_INIT` | `false` | both | Permit creating the repository. Set for the first run only. |
+| `RESTIC_EXTRA_OPTS` | unset | both | Space-separated `-o` options for backend tuning. |
+| `RESTIC_SSH_KEY` | unset | sftp | Path to a mounted SSH private key. |
+| `RESTIC_SSH_KNOWN_HOSTS` | unset | sftp | Path to a mounted `known_hosts`. Required — host keys are always verified. |
 
 > **If `RESTIC_PASSWORD` is lost the repository is mathematically unrecoverable.**
 > Do not store it only in the Vault whose backups you would need it to restore.

@@ -62,7 +62,9 @@ ADD vault-backup.sh /usr/bin/backup-vault
 ADD s3-backup.sh /usr/bin/s3-backup
 ADD nfs-backup.sh /usr/bin/backup-nfs
 ADD nfs-restore.sh /usr/bin/restore-nfs
-RUN chmod 0755 /usr/bin/backup-nfs /usr/bin/restore-nfs
+ADD restic-common.sh /usr/lib/backup-tools/restic-common.sh
+RUN chmod 0755 /usr/bin/backup-nfs /usr/bin/restore-nfs && \
+    chmod 0644 /usr/lib/backup-tools/restic-common.sh
 
 ENV CACHED_VERSION_OPENBAO=${VERSION_OPENBAO}
 
