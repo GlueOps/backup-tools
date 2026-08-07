@@ -90,5 +90,7 @@ FIRST_SECRET_NO_PREFIX=${FIRST_SECRET#"secret/data/"}
 
 UPDATED_JSON=$(echo $BASE_JSON | jq --arg path "secret/$FIRST_SECRET_NO_PREFIX" --argjson kv "$KEY_VALUES" '.path_values_map[$path] = $kv')
 
+echo "$UPDATED_JSON" | jq .
+
 echo "Validating Backup now....."
 curl glueops-backup-and-exports.glueops-core-backup.svc.cluster.local:8080/api/v1/validate --fail-with-body -X POST -d "${UPDATED_JSON}"
