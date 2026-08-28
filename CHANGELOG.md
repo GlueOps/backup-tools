@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.18.0](https://github.com/GlueOps/backup-tools/compare/v2.17.0...v2.18.0) (2026-08-28)
+
+
+### Features
+
+* update docker/login-action to v4.5.0 #minor ([#272](https://github.com/GlueOps/backup-tools/issues/272)) ([6ec8f4f](https://github.com/GlueOps/backup-tools/commit/6ec8f4fb08c599e1d9071293905424636d20840a))
+* update docker/login-action to v4.6.0 #minor ([#277](https://github.com/GlueOps/backup-tools/issues/277)) ([5224158](https://github.com/GlueOps/backup-tools/commit/52241588de4c4eb7c1d4b7038f58c91a44bece62))
+
+
+### Miscellaneous Chores
+
+* **fallback:** update ubuntu ([#260](https://github.com/GlueOps/backup-tools/issues/260)) ([b7a6e46](https://github.com/GlueOps/backup-tools/commit/b7a6e46c03291ab9a448a3a80a15161508b15899))
+* **patch:** update docker/login-action to v4.5.1 #patch ([#275](https://github.com/GlueOps/backup-tools/issues/275)) ([3a3db8a](https://github.com/GlueOps/backup-tools/commit/3a3db8a4c08447aad36ad01edf973c59a1dc74ea))
+* **patch:** update docker/login-action to v4.5.2 #patch ([#276](https://github.com/GlueOps/backup-tools/issues/276)) ([a5ff639](https://github.com/GlueOps/backup-tools/commit/a5ff639c0cfd5e8d383bc38b16bf891b54d51b66))
+
 ## [2.17.0](https://github.com/GlueOps/backup-tools/compare/v2.16.0...v2.17.0) (2026-08-04)
 
 
