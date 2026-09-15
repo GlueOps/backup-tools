@@ -4,7 +4,7 @@ FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a
 # renovate: datasource=github-tags depName=aws/aws-cli
 ARG VERSION_AWS_CLI=2.35.15
 # renovate: datasource=github-tags depName=cli/cli
-ARG VERSION_GH_CLI=2.96.0
+ARG VERSION_GH_CLI=2.97.0
 # renovate: datasource=github-tags depName=openbao/openbao
 ARG VERSION_OPENBAO=2.5.5
 # renovate: datasource=github-tags depName=grafana/loki
