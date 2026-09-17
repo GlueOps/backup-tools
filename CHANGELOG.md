@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.18.0](https://github.com/GlueOps/backup-tools/compare/v2.17.0...v2.18.0) (2026-09-17)
+
+
+### Features
+
+* update aws/aws-cli to 2.36.25 #minor ([#270](https://github.com/GlueOps/backup-tools/issues/270)) ([b104505](https://github.com/GlueOps/backup-tools/commit/b104505b5f598fde96077c0b5c5cde07c72a55cf))
+* update cli/cli to v2.97.0 #minor ([#278](https://github.com/GlueOps/backup-tools/issues/278)) ([f86d517](https://github.com/GlueOps/backup-tools/commit/f86d51709d7232aa31826fc368e254906e6c6af0))
+* update docker/login-action to v4.5.0 #minor ([#272](https://github.com/GlueOps/backup-tools/issues/272)) ([6ec8f4f](https://github.com/GlueOps/backup-tools/commit/6ec8f4fb08c599e1d9071293905424636d20840a))
+* update docker/login-action to v4.6.0 #minor ([#277](https://github.com/GlueOps/backup-tools/issues/277)) ([5224158](https://github.com/GlueOps/backup-tools/commit/52241588de4c4eb7c1d4b7038f58c91a44bece62))
+* update openbao/openbao to v2.6.1 #minor ([#269](https://github.com/GlueOps/backup-tools/issues/269)) ([6bc1985](https://github.com/GlueOps/backup-tools/commit/6bc19851108caca262059018e6681633bb9a89a5))
+
+
+### Bug Fixes
+
+* update openbao/openbao to v2.6.2 and use renamed release asset #patch ([#279](https://github.com/GlueOps/backup-tools/issues/279)) ([a033447](https://github.com/GlueOps/backup-tools/commit/a03344795349e32e2b8e0aaec91e869ade343134))
+
+
+### Miscellaneous Chores
+
+* **fallback:** update ubuntu ([#260](https://github.com/GlueOps/backup-tools/issues/260)) ([b7a6e46](https://github.com/GlueOps/backup-tools/commit/b7a6e46c03291ab9a448a3a80a15161508b15899))
+* **patch:** update aws/aws-cli to 2.35.24 #patch ([#268](https://github.com/GlueOps/backup-tools/issues/268)) ([809d56f](https://github.com/GlueOps/backup-tools/commit/809d56fd594dcbc2c5ed9231c2dd4e0eb366c035))
+* **patch:** update docker/login-action to v4.5.1 #patch ([#275](https://github.com/GlueOps/backup-tools/issues/275)) ([3a3db8a](https://github.com/GlueOps/backup-tools/commit/3a3db8a4c08447aad36ad01edf973c59a1dc74ea))
+* **patch:** update docker/login-action to v4.5.2 #patch ([#276](https://github.com/GlueOps/backup-tools/issues/276)) ([a5ff639](https://github.com/GlueOps/backup-tools/commit/a5ff639c0cfd5e8d383bc38b16bf891b54d51b66))
+* **patch:** update grafana/loki to v3.7.6 #patch ([#251](https://github.com/GlueOps/backup-tools/issues/251)) ([abfc8fd](https://github.com/GlueOps/backup-tools/commit/abfc8fd1d44f09646f7b3ccefa2d9982a6e5574c))
+
 ## [2.17.0](https://github.com/GlueOps/backup-tools/compare/v2.16.0...v2.17.0) (2026-08-04)
 
 
