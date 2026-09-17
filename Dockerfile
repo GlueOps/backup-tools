@@ -6,7 +6,7 @@ ARG VERSION_AWS_CLI=2.36.25
 # renovate: datasource=github-tags depName=cli/cli
 ARG VERSION_GH_CLI=2.97.0
 # renovate: datasource=github-tags depName=openbao/openbao
-ARG VERSION_OPENBAO=2.6.1
+ARG VERSION_OPENBAO=2.6.2
 # renovate: datasource=github-tags depName=grafana/loki
 ARG VERSION_LOKI=3.7.6
 # renovate: datasource=github-releases depName=restic/restic
@@ -30,15 +30,12 @@ RUN curl --proto =https "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${
     ./aws/install &&    \
     rm -rf awscliv2.zip aws
 
-# renovate: datasource=github-tags depName=openbao/openbao
-ARG VERSION_OPENBAO=2.6.1
-
 #Download and install Bao
-ADD https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
+ADD https://github.com/openbao/openbao/releases/download/v${VERSION_OPENBAO}/openbao_${VERSION_OPENBAO}_linux_amd64.tar.gz /tmp/openbao_${VERSION_OPENBAO}_linux_amd64.tar.gz
 
 # Unzip the Bao binary and clean up
-RUN tar -xzvf /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz bao && mv bao /usr/local/bin/bao && \
-    rm /tmp/bao_${VERSION_OPENBAO}_Linux_x86_64.tar.gz
+RUN tar -xzvf /tmp/openbao_${VERSION_OPENBAO}_linux_amd64.tar.gz bao && mv bao /usr/local/bin/bao && \
+    rm /tmp/openbao_${VERSION_OPENBAO}_linux_amd64.tar.gz
 
     
 # Install GitHub CLI
