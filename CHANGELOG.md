@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.19.0](https://github.com/GlueOps/backup-tools/compare/v2.18.0...v2.19.0) (2026-09-18)
+
+
+### Features
+
+* update docker/setup-buildx-action to v4.3.0 #minor ([#280](https://github.com/GlueOps/backup-tools/issues/280)) ([bddca73](https://github.com/GlueOps/backup-tools/commit/bddca7349cdbda344fecc29965a712aeece2b7a5))
+
 ## [2.18.0](https://github.com/GlueOps/backup-tools/compare/v2.17.0...v2.18.0) (2026-09-17)
 
 
