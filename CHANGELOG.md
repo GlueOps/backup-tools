@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.19.0](https://github.com/GlueOps/backup-tools/compare/v2.18.0...v2.19.0) (2026-10-01)
+
+
+### Features
+
+* update docker/setup-buildx-action to v4.3.0 #minor ([#280](https://github.com/GlueOps/backup-tools/issues/280)) ([bddca73](https://github.com/GlueOps/backup-tools/commit/bddca7349cdbda344fecc29965a712aeece2b7a5))
+* update docker/setup-qemu-action to v4.3.0 #minor ([#285](https://github.com/GlueOps/backup-tools/issues/285)) ([87cf40f](https://github.com/GlueOps/backup-tools/commit/87cf40ff2c486bc04e02ad286badcf20686530a2))
+
 ## [2.18.0](https://github.com/GlueOps/backup-tools/compare/v2.17.0...v2.18.0) (2026-09-17)
 
 
