@@ -8,7 +8,7 @@ ARG VERSION_GH_CLI=2.97.0
 # renovate: datasource=github-tags depName=openbao/openbao
 ARG VERSION_OPENBAO=2.6.2
 # renovate: datasource=github-tags depName=grafana/loki
-ARG VERSION_LOKI=3.7.6
+ARG VERSION_LOKI=3.7.7
 # renovate: datasource=github-releases depName=restic/restic
 ARG VERSION_RESTIC=0.19.1
 
