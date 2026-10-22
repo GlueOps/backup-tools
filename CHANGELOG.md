@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.19.0](https://github.com/GlueOps/backup-tools/compare/v2.18.0...v2.19.0) (2026-10-22)
+
+
+### Features
+
+* update docker/build-push-action to v7.4.0 #minor ([#288](https://github.com/GlueOps/backup-tools/issues/288)) ([8bfa2ab](https://github.com/GlueOps/backup-tools/commit/8bfa2ab5da0b00757cfa65075f8b110f379df60d))
+* update docker/setup-buildx-action to v4.3.0 #minor ([#280](https://github.com/GlueOps/backup-tools/issues/280)) ([bddca73](https://github.com/GlueOps/backup-tools/commit/bddca7349cdbda344fecc29965a712aeece2b7a5))
+* update docker/setup-buildx-action to v4.4.0 #minor ([#289](https://github.com/GlueOps/backup-tools/issues/289)) ([b8522b2](https://github.com/GlueOps/backup-tools/commit/b8522b2b6e1226237390c2d02f7e11bb89aacc62))
+* update docker/setup-qemu-action to v4.3.0 #minor ([#285](https://github.com/GlueOps/backup-tools/issues/285)) ([87cf40f](https://github.com/GlueOps/backup-tools/commit/87cf40ff2c486bc04e02ad286badcf20686530a2))
+* update docker/setup-qemu-action to v4.4.0 #minor ([#290](https://github.com/GlueOps/backup-tools/issues/290)) ([94fba06](https://github.com/GlueOps/backup-tools/commit/94fba062fec545570d34cdc5e1dbbaef8ad8dc46))
+
+
+### Miscellaneous Chores
+
+* **fallback:** update ubuntu ([#294](https://github.com/GlueOps/backup-tools/issues/294)) ([b52fd66](https://github.com/GlueOps/backup-tools/commit/b52fd66eaa03da9bcb1b12a7685836adec9cf9ca))
+* **patch:** update docker/setup-buildx-action to v4.4.1 #patch ([#292](https://github.com/GlueOps/backup-tools/issues/292)) ([f0e683b](https://github.com/GlueOps/backup-tools/commit/f0e683b6ef29ea053b1c930e7b36bdb6534a2d86))
+
 ## [2.18.0](https://github.com/GlueOps/backup-tools/compare/v2.17.0...v2.18.0) (2026-09-17)
 
 
