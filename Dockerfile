@@ -2,7 +2,7 @@
 FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289
 
 # renovate: datasource=github-tags depName=aws/aws-cli
-ARG VERSION_AWS_CLI=2.36.25
+ARG VERSION_AWS_CLI=2.37.13
 # renovate: datasource=github-tags depName=cli/cli
 ARG VERSION_GH_CLI=2.97.0
 # renovate: datasource=github-tags depName=openbao/openbao
